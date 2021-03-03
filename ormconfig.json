@@ -1,0 +1,53 @@
+[
+    {
+        "name": "development",
+        "type": "postgres",
+        "host": "localhost",
+        "port": 5432,
+        "username": "tyson",
+        "password": "h3ll0tyson",
+        "database": "localfood_dev",
+        "synchronize": true,
+        "logging": true,
+        "entities": [
+            "src/Graph/Topology/Atlas/*.ts"
+        ],
+        "migrations": [
+            "src/Graph/Database/migrations/**/*.ts"
+        ],
+        "subscribers": [
+            "src/Graph/Database/subscriber/**/*.ts"
+        ],
+        "cli": {
+            "entitiesDir": "src/Graph/Topology/Atlas/",
+            "migrationsDir": "src/Graph/Database/migrations/",
+            "subscribersDir": "src/Graph/Database/subscriber/"
+        }
+    },
+    {
+        "name": "test",
+        "type": "postgres",
+        "host": "localhost",
+        "port": 5432,
+        "username": "tyson",
+        "password": "h3ll0tyson",
+        "database": "localfood_test",
+        "synchronize": true,
+        "logging": false,
+        "dropSchema": true,
+        "entities": [
+            "src/Graph/Topology/Atlas/*.ts"
+        ],
+        "migrations": [
+            "src/Graph/Database/migrations/**/*.ts"
+        ],
+        "subscribers": [
+            "src/Graph/Database/subscriber/**/*.ts"
+        ],
+        "cli": {
+            "entitiesDir": "src/Graph/Topology/Atlas/",
+            "migrationsDir": "src/Graph/Database/migrations/",
+            "subscribersDir": "src/Graph/Database/subscriber/"
+        }
+    }
+]

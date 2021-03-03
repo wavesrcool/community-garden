@@ -1,0 +1,9 @@
+{
+    "lerna": "3.22.1",
+    "packages": [
+        "communitygarden/*"
+    ],
+    "npmClient": "yarn",
+    "useWorkspaces": true,
+    "version": "0.0.0"
+}
