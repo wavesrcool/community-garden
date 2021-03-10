@@ -1,10 +1,12 @@
 import "reflect-metadata";
 import ValidationError from 'yup/lib/ValidationError';
-import { Account } from "../../Topology/Atlas/Account";
-import { LoginInput, SignUpAccountInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateAccountIdentityInput, UpdateFarmGeocodeInput, UpdateFarmIdentityInput, VegetableCreateInput } from '../../Topology/Figures/InputTypes';
-import { ErrorList } from '../../Topology/Figures/ObjectTypes';
-import Directive from './Directive';
-import Schema from './Schema';
+import { Account } from "../Topology/Atlas/Account";
+import { SignUpPublicInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateAccountIdentityInput, UpdateFarmIdentityInput, VegetableCreateInput, QuantityMapCreateInput, ListAddInput, DualCredential } from '../Topology/Figures/InputTypes';
+import { ErrorList } from '../Topology/Figures/ObjectTypes';
+import Validation from "@cg/common"
+import { VegetableName } from "../Topology/Figures/EnumTypes";
+
+
 
 const formatYupError = (err: ValidationError): ErrorList[] => {
     const errors: ErrorList[] = [];
@@ -19,26 +21,26 @@ const formatYupError = (err: ValidationError): ErrorList[] => {
 };
 
 const GraphValidate = {
-    SignUpPublic: async (data: SignUpAccountInput): Promise<ErrorList[] | null> => {
+    SignUpPublic: async (data: SignUpPublicInput): Promise<ErrorList[] | null> => {
         try {
-            await Schema.sign_up_account.validate(data, { abortEarly: false });
+            await Validation.sign_up_account.validate(data, { abortEarly: false });
 
-            const username_exists = await Account.findOne({ where: { username: data.username } })
-            if (username_exists) {
+            const username_duplicate = await Account.findOne({ where: { username: data.username } })
+            if (username_duplicate) {
                 return [
                     {
                         path: "username",
-                        message: Directive.usernameDuplicate
+                        message: Validation.directives.usernameDuplicate
                     }
                 ];
             }
 
-            const email_exists = await Account.findOne({ where: { email: data.email } })
-            if (email_exists) {
+            const email_duplicate = await Account.findOne({ where: { email: data.email } })
+            if (email_duplicate) {
                 return [
                     {
                         path: "email",
-                        message: Directive.emailDuplicate
+                        message: Validation.directives.emailDuplicate
                     }
                 ];
             }
@@ -50,24 +52,24 @@ const GraphValidate = {
 
     SignUpFarm: async (data: SignUpFarmInput): Promise<ErrorList[] | null> => {
         try {
-            await Schema.sign_up_farm.validate(data, { abortEarly: false });
+            await Validation.sign_up_farm.validate(data, { abortEarly: false });
 
-            const username_exists = await Account.findOne({ where: { username: data.username } })
-            if (username_exists) {
+            const username_duplicate = await Account.findOne({ where: { username: data.username } })
+            if (username_duplicate) {
                 return [
                     {
                         path: "username",
-                        message: Directive.usernameDuplicate
+                        message: Validation.directives.usernameDuplicate
                     }
                 ];
             }
 
-            const email_exists = await Account.findOne({ where: { email: data.email } })
-            if (email_exists) {
+            const email_duplicate = await Account.findOne({ where: { email: data.email } })
+            if (email_duplicate) {
                 return [
                     {
                         path: "email",
-                        message: Directive.emailDuplicate
+                        message: Validation.directives.emailDuplicate
                     }
                 ];
             }
@@ -77,9 +79,9 @@ const GraphValidate = {
         }
     },
 
-    Login: async (data: LoginInput): Promise<ErrorList[] | null> => {
+    Login: async (data: DualCredential): Promise<ErrorList[] | null> => {
         try {
-            await Schema.login.validate(data, { abortEarly: false });
+            await Validation.login.validate(data, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -88,7 +90,7 @@ const GraphValidate = {
 
     ChangePassword: async (password: string): Promise<ErrorList[] | null> => {
         try {
-            await Schema.change_password.validate(password, { abortEarly: false });
+            await Validation.change_password.validate(password, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -98,7 +100,7 @@ const GraphValidate = {
 
     UpdateAccountIdentity: async (data: UpdateAccountIdentityInput): Promise<ErrorList[] | null> => {
         try {
-            await Schema.update_account_identity.validate(data, { abortEarly: false });
+            await Validation.update_account_identity.validate(data, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -107,7 +109,7 @@ const GraphValidate = {
 
     UpdateAccountEmail: async (data: UpdateAccountEmailInput): Promise<ErrorList[] | null> => {
         try {
-            await Schema.update_account_email.validate(data, { abortEarly: false });
+            await Validation.update_account_email.validate(data, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -116,7 +118,7 @@ const GraphValidate = {
 
     UpdateAccountGeocode: async (data: UpdateAccountGeocodeInput): Promise<ErrorList[] | null> => {
         try {
-            await Schema.update_account_geocode.validate(data, { abortEarly: false });
+            await Validation.update_account_geocode.validate(data, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -144,6 +146,7 @@ const GraphValidate = {
         return null;
     },
 
+    /*
     UpdateFarmGeocode: async (data: UpdateFarmGeocodeInput): Promise<ErrorList[] | null> => {
         if (!data.geocode.geolocation) {
             return [
@@ -154,24 +157,57 @@ const GraphValidate = {
             ];
         }
         return null;
-    },
+    },*/
 
 
 
     CreateVegetable: async (data: VegetableCreateInput): Promise<ErrorList[] | null> => {
-        if (!data.index) {
+        if (!data) {
             return [
                 {
-                    path: "ValidateVegetableCreate",
-                    message: "No botanical index provided."
+                    path: "VegetableCreateInput",
+                    message: `data: ${data}`
+                }
+            ];
+        }
+
+        if (data.name == VegetableName.OTHER) {
+            if (!data.other_name) {
+                return [
+                    {
+                        path: "VegetableCreateInput",
+                        message: "Please specify the kind of vegetable"
+                    }
+                ];
+            }
+        }
+        return null;
+    },
+
+    CreateVegetableQuantityMap: async (data: QuantityMapCreateInput): Promise<ErrorList[] | null> => {
+        if (!data) {
+            return [
+                {
+                    path: "QuantityMapInput",
+                    message: "No input recieved"
                 }
             ];
         }
         return null;
     },
 
+    ListAdd: async (data: ListAddInput): Promise<ErrorList[] | null> => {
+        if (!data) {
+            return [
+                {
+                    path: "ListAdd",
+                    message: "No input recieved"
+                }
+            ];
+        }
+        return null;
+    }
+
 }
-
-
 
 export default GraphValidate;

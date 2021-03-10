@@ -1,8 +1,9 @@
-import { ObjectType, Field, Float, Int } from "type-graphql";
+import { ObjectType, Field, Float } from "type-graphql";
 import { Account } from "../Atlas/Account";
 import { Farm } from "../Atlas/Farm";
+import { Geocode } from "../Atlas/Geocode";
+import { List } from "../Atlas/List";
 import { Vegetable } from "../Atlas/Vegetable";
-import { CurrencyCodes, MeasurementUnits } from "./EnumTypes";
 
 @ObjectType()
 export class ErrorList {
@@ -14,7 +15,25 @@ export class ErrorList {
 }
 
 @ObjectType()
-export class PublicResponse {
+export class SignUpResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
+
+    @Field(() => String, { nullable: true })
+    username?: string;
+
+    @Field(() => String, { nullable: true })
+    account?: string;
+
+    @Field(() => String, { nullable: true })
+    farm?: string;
+
+    @Field(() => String, { nullable: true })
+    artisan?: string;
+}
+
+@ObjectType()
+export class GraphResponse {
     @Field(() => [ErrorList], { nullable: true })
     errors?: ErrorList[];
 
@@ -24,6 +43,12 @@ export class PublicResponse {
     @Field(() => Farm, { nullable: true })
     farm?: Farm;
 
+    @Field(() => Vegetable, { nullable: true })
+    vegetable?: Vegetable;
+
+    @Field(() => Geocode, { nullable: true })
+    geocode?: Geocode;
+
     @Field(() => Boolean, { nullable: true })
     deleted?: boolean;
 
@@ -32,53 +57,15 @@ export class PublicResponse {
 }
 
 @ObjectType()
-export class Geolocation {
-    @Field(() => Float)
-    lat: number;
+export class PublicResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
 
-    @Field(() => Float)
-    lng: number;
+    @Field(() => Account, { nullable: true })
+    account?: Account;
 }
 
 
-@ObjectType()
-export class Geocode {
-    @Field(() => Geolocation)
-    geolocation: Geolocation;
-
-    @Field(() => String, { nullable: true })
-    formatted_address?: string;
-
-    @Field(() => String, { nullable: true })
-    street_number?: string;
-
-    @Field(() => String, { nullable: true })
-    route?: string;
-
-    @Field(() => String, { nullable: true })
-    locality?: string;
-
-    @Field(() => String, { nullable: true })
-    administrative_area_level_2?: string;
-
-    @Field(() => String, { nullable: true })
-    administrative_area_level_1?: string;
-
-    @Field(() => String, { nullable: true })
-    country?: string;
-
-    @Field(() => String, { nullable: true })
-    postal_code?: string;
-
-    @Field(() => String, { nullable: true })
-    location_type?: string;
-
-    @Field(() => String, { nullable: true })
-    global_code?: string;
-
-    @Field(() => String, { nullable: true })
-    place_id?: string;
-}
 
 @ObjectType()
 export class DeliveryGradient {
@@ -108,46 +95,40 @@ export class VegetableResponse {
 
     @Field(() => Vegetable, { nullable: true })
     vegetable?: Vegetable;
-
-    @Field(() => Boolean, { nullable: true })
-    created?: boolean;
-
-    @Field(() => Boolean, { nullable: true })
-    updated?: boolean;
-
-    @Field(() => Boolean, { nullable: true })
-    deleted?: boolean;
 }
 
 @ObjectType()
-export class QuantityMap {
-    @Field(() => Int)
-    value: number;
+export class ListResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
 
-    @Field(() => Float)
-    dollars: number;
-
-    @Field(() => CurrencyCodes)
-    currency: string;
-
-    @Field(() => Int)
-    available: number;
+    @Field(() => List, { nullable: true })
+    list?: List;
 }
 
 @ObjectType()
-export class MeasurementMap {
-    @Field(() => Float)
-    value: number;
+export class FarmPage {
+    @Field()
+    farm_name: string;
 
-    @Field(() => MeasurementUnits)
-    unit: string;
+    @Field(() => [String])
+    available_vegetables: [string];
 
-    @Field(() => Float)
-    dollars: number;
+    @Field(() => [String])
+    growing_vegetables: [string];
 
-    @Field(() => CurrencyCodes)
-    currency: string;
-
-    @Field(() => Int)
-    available: number;
+    @Field(() => [Vegetable], { nullable: true })
+    vegetables: Vegetable[];
 }
+
+@ObjectType()
+export class FarmPageResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
+
+    @Field(() => FarmPage, { nullable: true })
+    page?: FarmPage;
+}
+
+
+

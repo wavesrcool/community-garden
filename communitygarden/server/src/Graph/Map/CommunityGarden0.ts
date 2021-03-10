@@ -1,192 +1,121 @@
 import "reflect-metadata";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { LoginInput, SignUpAccountInput, SignUpFarmInput } from "../Topology/Figures/InputTypes";
-import { PublicResponse, ErrorList } from "../Topology/Figures/ObjectTypes";
-import GraphValidate from "../Functions/Validate/GraphValidate";
-import GraphCompose from "../Functions/Compose/GraphCompose";
-import { gql, GraphQLClient } from "graphql-request";
-import CommunityGarden, { LocalFood } from "../../CommunityGarden/core";
+import { SignUpPublicInput, SignUpFarmInput, UpdateAccountIdentityInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, DualCredential } from "../Topology/Figures/InputTypes";
+import { PublicResponse, ErrorList, SignUpResponse, GraphResponse } from "../Topology/Figures/ObjectTypes";
+import GraphValidate from "../Functions/GraphValidate";
+import GraphCompose from "../Functions/GraphCompose";
+import { LocalFood } from "../../CommunityGarden/core";
 import { Account } from "../Topology/Atlas/Account";
-
-//import iso3166 from "../../CommunityGarden/Data/ISO3166-1.alpha2.json"
-
-const __COOKIE__ = "localfood";
-
-
-//const a = iso3166.CN
-//console.log();
 
 @Resolver()
 export class CommunityGarden0 {
-    @Mutation(() => Boolean)
-    async testGraphQL(
-        @Arg("communitygarden") communitygarden: String
-    ): Promise<Boolean> {
-        if (communitygarden === "localfood") {
-            return true;
-        } else {
-            return false;
-
-        }
-    };
-
-    @Mutation(() => Boolean)
-    async scripting(
-    ) {
-        //const b64 = "SGVsbG8sIFdvcmxkIQ==";
-        const str = 'Hello, World!'
-
-        const token = process.env.COMMUNITY_GARDEN_BRAINTREE_API_PUBLIC_KEY;
-        console.log(token)
-        if (!token) {
-            return false;
-        }
-        const base64_token = await CommunityGarden.encode64(str)
-        console.log(base64_token)
-
-        return true;
-    }
-    @Mutation(() => Boolean)
-    async testBraintree() {
-        //const endpoint1 = process.env.COMMUNITY_GARDEN_BRAINTREE_API_ENDPOINT;
-        const endpoint2 = process.env.COMMUNITY_GARDEN_BRAINTREE_API_ENDPOINT_TEST;
-
-        const keypair = process.env.COMMUNITY_GARDEN_BRAINTREE_API_PUBLIC_KEY + ":" + process.env.COMMUNITY_GARDEN_BRAINTREE_API_PRIVATE_KEY;
-        //console.log("keypair, ", keypair);
-
-        const BraintreeClient = new GraphQLClient(endpoint2 as string, {
-            headers: {
-                "authorization": "Bearer " + CommunityGarden.encode64(keypair as string),
-                "Braintree-Version": "2021-02-26",
-                "Content-Type": "application/json",
-            }
-        })
-
-
-
-
-
-
-        const query = gql`query {
-            ping
-        }`
-
-        const mut2 = gql`mutation chargePaymentMethod($input: ChargePaymentMethodInput!) {
-            chargePaymentMethod(input: $input) {
-              transaction {
-                id
-                status
-              }
-            }
-          }`
-
-        const mut3 = gql`mutation {
-            createClientToken {
-              clientToken
-            }
-          }`
-
-        const paymentMethodIdVALUE = "";
-
-        const vars_1 = {
-            input: {
-                paymentMethodId: `${paymentMethodIdVALUE}`,
-                transaction: {
-                    amount: 20
-                }
-            }
-        }
-
-        await BraintreeClient.request(mut2, vars_1)
-            .then(data => console.log(data))
-            .catch(err => {
-                console.log("Community Garden Error:\n", err.response.errors[0])
-            })
-
-        await BraintreeClient.request(mut3)
-            .then(data => console.log(data))
-            .catch(err => {
-                console.log("Community Garden Error:\n", err.response.errors[0])
-            })
-
-
-        await BraintreeClient.request(query)
-            .then(data => console.log(data))
-            .catch(err => {
-                console.log("Community Garden Error:\n", err.response.errors)
-            })
-        return true;
-    }
-
-    @Mutation(() => PublicResponse)
+    @Mutation(() => SignUpResponse)
     async signUpPublic(
-        @Arg("signup_data") signup_data: SignUpAccountInput,
+        @Arg("input") input: SignUpPublicInput,
         @Ctx() { req }: LocalFood,
-    ): Promise<PublicResponse> {
-        const errors: ErrorList[] | null = await GraphValidate.SignUpPublic(signup_data);
+    ): Promise<SignUpResponse> {
+        const errors: ErrorList[] | null = await GraphValidate.SignUpPublic(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.SignUpPublic(signup_data);
+        const resp: SignUpResponse = await GraphCompose.SignUpPublic(input);
+        console.log("SignUpPublic...", resp)
 
         if (resp.errors) {
             return { errors: resp.errors };
         }
 
-        else if (resp.account) {
-            req.session.publicId = resp.account.cg;
-            return resp;
-        }
-
-        else {
+        if (!resp.account) {
             return {
                 errors: [
                     {
                         path: "signUpAccount",
-                        message: `Else condition: ${signup_data.username}`
+                        message: `Bad response: ${resp}`
                     }
                 ],
             };
         }
+
+        req.session.publicId = resp.account;
+
+        /*
+        await CommunityGarden.SendEmail(
+            {
+                to: input.email,
+                from: "wavesrcool@icloud.com",
+                subject: "Verify your email address",
+                text: `${resp.account}`
+            }
+        );*/
+
+        return {
+            username: resp.username,
+            account: resp.account,
+        }
     };
 
-    @Mutation(() => PublicResponse)
+    @Mutation(() => SignUpResponse)
     async signUpFarm(
-        @Arg("signup_data") signup_data: SignUpFarmInput,
+        @Arg("input") input: SignUpFarmInput,
         @Ctx() { req }: LocalFood,
-    ): Promise<PublicResponse> {
-        const errors: ErrorList[] | null = await GraphValidate.SignUpFarm(signup_data);
+    ): Promise<SignUpResponse> {
+        const errors: ErrorList[] | null = await GraphValidate.SignUpFarm(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.SignUpFarm(signup_data);
+        const resp: SignUpResponse = await GraphCompose.SignUpFarm(input);
+        console.log("SignUpFarm...", resp)
 
         if (resp.errors) {
             return { errors: resp.errors };
         }
 
-        else if (resp.account) {
-            req.session.publicId = resp.account.cg;
-            return resp;
-        }
-
-        else {
+        if (!resp.account || !resp.farm) {
             return {
                 errors: [
                     {
                         path: "signUpFarm",
-                        message: `Else condition: ${signup_data.username}`
+                        message: `Bad response: ${resp}`
                     }
                 ],
             };
         }
-    };
+
+        req.session.publicId = resp.account;
+        req.session.farmId = resp.farm;
+
+        /*
+        await CommunityGarden.SendEmail(
+            {
+                to: input.email,
+                from: "wavesrcool@icloud.com",
+                subject: "Verify your email address",
+                text: `${resp.account}`
+            }
+        );*/
+
+        return {
+            username: resp.username,
+            account: resp.account,
+            farm: resp.farm,
+        }
+    }
+
+    @Mutation(() => Boolean)
+    async signUpVerifyEmail(
+        @Arg("input") input: string
+    ): Promise<Boolean> {
+        if (input) {
+            return true
+        }
+        return false
+    }
 
     @Mutation(() => PublicResponse)
     async login(
-        @Arg("login_credentials") login_credentials: LoginInput,
+        @Arg("login_credentials") login_credentials: DualCredential,
         @Ctx() { req }: LocalFood,
     ): Promise<PublicResponse> {
         const errors: ErrorList[] | null = await GraphValidate.Login(login_credentials);
@@ -208,7 +137,7 @@ export class CommunityGarden0 {
             return resp;
         }
 
-        else if (resp.account && !resp.farm) {
+        else if (resp.account && !resp.account.farm) {
             req.session.publicId = resp.account.cg;
             //console.log(req.session)
             return resp;
@@ -231,7 +160,7 @@ export class CommunityGarden0 {
         @Ctx() { req, res }: LocalFood
     ): Promise<Boolean> {
         return new Promise(yay => req.session.destroy(err => {
-            res.clearCookie(__COOKIE__);
+            res.clearCookie(process.env.COOKIE_NAME as string);
             if (err) {
                 console.log(`Community Garden, \'logout\': ${err}`);
                 yay(false);
@@ -239,6 +168,196 @@ export class CommunityGarden0 {
             }
             yay(true);
         }));
+    };
+
+    @Mutation(() => Boolean)
+    async deleteAccount(
+        @Arg("input") input: DualCredential,
+        @Ctx() { req, res }: LocalFood
+    ): Promise<Boolean> {
+        if (!req.session.publicId) {
+            console.log(`Community Garden, \'deleteAccount\' cookie: ${req.session.publicId}`);
+            return false;
+        }
+        const resp: GraphResponse = await GraphCompose.DeleteAccount(input, req.session.publicId);
+
+        if (resp.errors) {
+            console.log(`Community Garden, \'deleteAccount\' errors: ${resp.errors[0].message}`);
+            return false;
+        }
+
+        if (resp.deleted == true) {
+            return new Promise(yay => req.session.destroy(err => {
+                res.clearCookie(process.env.COOKIE_NAME as string);
+                if (err) {
+                    console.log(`Community Garden, \'deleteAccount\' destroy... : ${err}`);
+                    yay(false);
+                    return;
+                }
+                yay(true);
+            }));
+        } else {
+            console.log(`Community Garden, \'deleteAccount\': else condition`);
+            return false;
+        }
+    }
+
+    @Mutation(() => Boolean)
+    async deleteFarm(
+        @Arg("input") input: DualCredential,
+        @Ctx() { req }: LocalFood
+    ): Promise<Boolean> {
+        if (!req.session.publicId || !req.session.farmId) {
+            console.log(`Community Garden, \'deleteAccount\' cookie: ${req.session.publicId}, ${req.session.farmId}`);
+            return false;
+        }
+        const resp: GraphResponse = await GraphCompose.DeleteFarm(input, req.session.publicId, req.session.farmId);
+        console.log("deleteFarm,", resp)
+        if (resp.errors) {
+            console.log(`Community Garden, \'deleteAccount\' errors: ${resp.errors[0].message}`);
+            return false;
+        }
+        else if (resp.deleted == true) {
+            return true
+        }
+        else {
+            return false;
+        }
+    }
+
+    @Mutation(() => PublicResponse)
+    async updateAccountIdentity(
+        @Arg("input") input: UpdateAccountIdentityInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<PublicResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountIdentity",
+                        message: `Cookie: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountIdentity(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: PublicResponse = await GraphCompose.UpdateAccountIdentity(input, req.session.publicId);
+        console.log("updateAccountIdentity", resp);
+
+        if (resp.errors) {
+            return { errors: resp.errors };
+        }
+
+        else if (resp.account) {
+            //req.session.publicId = resp.account.cg;
+            return resp;
+        }
+
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountIdentity",
+                        message: `Else condition: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
+    };
+
+    @Mutation(() => PublicResponse)
+    async updateAccountEmail(
+        @Arg("input") input: UpdateAccountEmailInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<PublicResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountEmail",
+                        message: `Cookie: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountEmail(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: PublicResponse = await GraphCompose.UpdateAccountEmail(input, req.session.publicId);
+
+        if (resp.errors) {
+            return { errors: resp.errors };
+        }
+
+        else if (resp.account) {
+            //req.session.publicId = resp.account.cg;
+            //console.log(resp);
+            return resp;
+        }
+
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountEmail",
+                        message: `Else condition: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
+    };
+
+    @Mutation(() => PublicResponse)
+    async updateAccountGeocode(
+        @Arg("input") input: UpdateAccountGeocodeInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<PublicResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountGeocode",
+                        message: `Cookie: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountGeocode(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: PublicResponse = await GraphCompose.UpdateAccountGeocode(input, req.session.publicId);
+        console.log("updateAccountGeocode", resp);
+
+        if (resp.errors) {
+            return { errors: resp.errors };
+        }
+
+        else if (resp.account) {
+            //req.session.publicId = resp.account.cg;
+            return resp;
+        }
+
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountGeocode",
+                        message: `Else condition: ${req.session.publicId}`
+                    }
+                ],
+            };
+        }
     };
 
     @Query(() => [Account])

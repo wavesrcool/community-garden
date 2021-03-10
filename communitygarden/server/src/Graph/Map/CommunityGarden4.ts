@@ -1,11 +1,92 @@
-import { Farm } from "../../Graph/Topology/Farm";
-import { GeolocationInput } from "../../Graph/Topology/Figures/InputTypes";
+/*import { Farm } from "../../Graph/Topology/Atlas/Farm";
+import { GeolocationInput, ListAddInput } from "../../Graph/Topology/Figures/InputTypes";
 import { toRadians } from "spherical-geometry-js";
-import { Arg, Mutation, Resolver } from "type-graphql";
+import { Arg, Ctx, Mutation, Resolver } from "type-graphql";
 import { getManager } from "typeorm";
+import { LocalFood } from "server/src/CommunityGarden/core";
+import { ListResponse } from "../Topology/Figures/ObjectTypes";
+import GraphValidate from "../Functions/GraphValidate";
+import GraphCompose from "../Functions/GraphCompose";
+import { Account } from "../Topology/Atlas/Account";
 
 @Resolver()
 export class CommunityGarden4 {
+    @Mutation(() => ListResponse)
+    async listAdd(
+        @Arg("input") input: ListAddInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<ListResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "listAdd",
+                        message: "No publicId on cookie"
+                    }
+                ]
+            }
+        }
+
+        if (!req.session.farmId) {
+            return {
+                errors: [
+                    {
+                        path: "listAdd",
+                        message: "No farmId on cookie"
+                    }
+                ]
+            }
+        }
+
+        const acct = await Account.findOne({ where: { cg: req.session.publicId } })
+        console.log(acct)
+        if (acct === undefined) {
+            return {
+                errors: [
+                    {
+                        path: "listAdd",
+                        message: "No Account with publicId on cookie"
+                    }
+                ]
+            }
+        }
+
+
+        if (acct.farmId === null) {
+            return {
+                errors: [
+                    {
+                        path: "listAdd",
+                        message: "No Farm on Account with publicId on cookie"
+                    }
+                ]
+            };
+        }
+
+        const errors = await GraphValidate.ListAdd(input);
+
+        if (errors) {
+            return {
+                errors: [
+                    {
+                        path: "listAdd",
+                        message: "No Farm on Account with publicId on cookie"
+                    }
+                ]
+            };
+        }
+
+        const resp = await GraphCompose.ListAdd(input, acct.farm.cg);
+
+
+
+        console.log(resp)
+
+        return {
+            list: resp?.list
+        }
+    }
+
     @Mutation(() => String)
     async distance(
         @Arg("pos") pos: GeolocationInput
@@ -30,4 +111,4 @@ export class CommunityGarden4 {
         }
         return undefined;
     }
-}
+}*/

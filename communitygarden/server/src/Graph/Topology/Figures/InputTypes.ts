@@ -1,19 +1,12 @@
 import { InputType, Field, Float, Int } from "type-graphql";
-import { CurrencyCodes, MeasurementUnits } from "./EnumTypes";
-
+import { iso3166, MassUnit, VegetableName, VegetableState } from "./EnumTypes";
 @InputType()
-export class GeolocationInput {
+export class GeocodeInput {
     @Field(() => Float)
     lat: number;
 
     @Field(() => Float)
     lng: number;
-}
-
-@InputType()
-export class GeocodeInput {
-    @Field(() => GeolocationInput)
-    geolocation: GeolocationInput;
 
     @Field(() => String, { nullable: true })
     formatted_address?: string;
@@ -59,7 +52,7 @@ export class DeliveryGradientInput {
 }
 
 @InputType()
-export class SignUpAccountInput {
+export class SignUpPublicInput {
     @Field()
     first_name!: string;
 
@@ -110,10 +103,13 @@ export class SignUpFarmInput {
 
     @Field(() => [DeliveryGradientInput])
     delivery_gradient!: DeliveryGradientInput[];
+
+    @Field(() => Boolean)
+    approves_pickup!: boolean;
 }
 
 @InputType()
-export class LoginInput {
+export class DualCredential {
     @Field()
     username: string;
 
@@ -164,64 +160,66 @@ export class UpdateFarmGeocodeInput {
 }
 
 @InputType()
-export class DeleteAccountInput {
-    @Field()
-    username: string;
-
-    @Field()
-    password: string;
-}
-
-@InputType()
-class QuantityMapInput {
-    @Field(() => Int)
-    value: number;
-
-    @Field(() => Float)
-    dollars: number;
-
-    @Field(() => CurrencyCodes)
-    currency: string;
-
-    @Field(() => Int)
-    available: number;
-}
-
-@InputType()
-class MeasurementMapInput {
-    @Field(() => Float)
-    value: number;
-
-    @Field(() => MeasurementUnits)
-    unit: string;
-
-    @Field(() => Float)
-    dollars: number;
-
-    @Field(() => CurrencyCodes)
-    currency: string;
-
-    @Field(() => Int)
-    available: number;
-}
-
-@InputType()
 export class VegetableCreateInput {
-    @Field()
-    index: string;
+    @Field(() => VegetableName)
+    name: VegetableName;
 
-    @Field(() => [MeasurementMapInput], { nullable: true })
-    measurements?: MeasurementMapInput[];
+    @Field(() => String, { nullable: true })
+    other_name?: string;
 
-    @Field(() => [QuantityMapInput], { nullable: true })
-    quantities?: QuantityMapInput[];
+    @Field(() => String)
+    variety: string;
+
+    @Field(() => VegetableState, { nullable: true })
+    state?: VegetableState;
 }
 
-@InputType()
-export class VegetableUpdateInput {
-    @Field(() => [MeasurementMapInput], { nullable: true })
-    measurements?: MeasurementMapInput[];
 
-    @Field(() => [QuantityMapInput], { nullable: true })
-    quantities?: QuantityMapInput[];
+@InputType()
+export class QuantityMapCreateInput {
+    @Field(() => Int)
+    vegetable_id: number;
+
+    @Field(() => Int)
+    available: number;
+
+    @Field(() => Float, { nullable: true })
+    mass: number;
+
+    @Field(() => MassUnit, { nullable: true })
+    mass_unit: MassUnit;
+
+    @Field(() => String)
+    tag: string;
+
+    @Field(() => Float)
+    valuation: number;
+
+    @Field(() => iso3166)
+    currency: iso3166;
+}
+
+
+@InputType()
+export class ListAddInput {
+    @Field()
+    from: string;
+
+    @Field()
+    to: string;
+
+    @Field()
+    node: string;
+
+    @Field()
+    map: string;
+
+    @Field(() => Int)
+    quantity: number;
+
+    @Field(() => Float)
+    number: number;
+
+    @Field(() => iso3166)
+    symbol: iso3166;
 }

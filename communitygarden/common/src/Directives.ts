@@ -1,4 +1,4 @@
-const Directive = {
+/*const Directives = {
     firstNameTooShort: "A first name must be more than 1 character",
     firstNameTooLong: "Please use a more concise first name",
 
@@ -24,4 +24,4 @@ const Directive = {
     lngInvalid: "Please enter a longitude",
 }
 
-export default Directive;
+export default Directives;*/

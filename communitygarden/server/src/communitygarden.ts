@@ -1,3 +1,4 @@
+import * as dotenv from "dotenv";
 import "reflect-metadata";
 import { ApolloServer } from 'apollo-server-express';
 import cors from 'cors';
@@ -6,22 +7,28 @@ import Redis from 'ioredis';
 import { buildSchema } from 'type-graphql';
 import connectRedis from "connect-redis";
 import session from "express-session";
-import * as dotenv from "dotenv"
+
+//const { loadDocuments } = require('@graphql-tools/load');
+//const { GraphQLFileLoader } = require('@graphql-tools/graphql-file-loader');
 
 import CommunityGarden from "./CommunityGarden/core";
-import { CommunityGarden0 } from "./Graph/Map/CommunityGarden0";
+
+import { GraphQLFileLoader, loadSchema, mergeSchemasAsync } from "graphql-tools"
+import { join } from "path";
+import { CommunityGarden1 } from "./Graph/Map/CommunityGarden1";
+
+
 
 const communitygarden = async () => {
     console.log("local food");
     dotenv.config();
-
+    //console.log(dotenv.config());
     try {
         const PORT = process.env.HTTP_PORT;
         const COOKIE_NAME = process.env.COOKIE_NAME;
         const COOKIE_SECRET = process.env.SESSION_SECRET;
         const conn = await CommunityGarden.DatabaseConnect();
         const app = express();
-
         app.use(
             cors({
                 origin: "http://localhost:3000",
@@ -31,6 +38,7 @@ const communitygarden = async () => {
         //this must go in between app and applyMiddleware
         const RedisStore = connectRedis(session);
         const redis = new Redis();
+        const bt = await CommunityGarden.BraintreeClient();
 
         if (process.env.NODE_ENV === "test") {
             await redis.flushall();
@@ -53,19 +61,35 @@ const communitygarden = async () => {
                 secret: COOKIE_SECRET as string,
                 resave: false, // doesn't continue to ping redis
             })
-        )
+        );
+
+        const local_food_graphql_schema = await buildSchema({
+            resolvers: [CommunityGarden1],
+            scalarsMap: [],
+            validate: false,
+        })
+
+        const bt_s = await loadSchema(join(__dirname, '../../common/bt.graphql'), {
+            loaders: [
+                new GraphQLFileLoader()
+            ]
+        });
+
+        const community_garden_graphql_schema = await mergeSchemasAsync({
+            schemas: [
+                local_food_graphql_schema,
+                bt_s,
+            ]
+        })
 
         const apolloServer = new ApolloServer({
-            schema: await buildSchema({
-                resolvers: [CommunityGarden0],
-                scalarsMap: [],
-                validate: false,
-            }),
+            schema: community_garden_graphql_schema,
             context: ({ req, res }) => (
                 {
                     req,
                     res,
-                    redis
+                    redis,
+                    bt,
                 })
         });
 

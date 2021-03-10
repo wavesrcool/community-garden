@@ -21,38 +21,46 @@ registerEnumType(AccountRole, {
     description: "Community Garden account roles."
 });
 
-/*
-export enum GeocodeLocationTypes {
-    ROOFTOP = "ROOFTOP",
-    RANGE_INTERPOLATED = "RANGE_INTERPOLATED",
-    GEOMETRIC_CENTER = "GEOMETRIC_CENTER",
-    APPROXIMATE = "APPROXIMATE",
-}
-
-registerEnumType(GeocodeLocationTypes, {
-    name: "GeocodeLocationTypes",
-    description: "Google Maps API result.geometry.location_types"
-})
-*/
-
-export enum CurrencyCodes {
+export enum iso3166 {
     CAD = "CAD",
     USD = "USD",
 }
 
-export enum MeasurementUnits {
+registerEnumType(iso3166, {
+    name: "CurrencyCodes",
+    description: "Supported payment currencies, ISO 3166 format"
+})
+
+export enum MassUnit {
     GRAMS = "g",
     KILOGRAMS = "kg",
     POUNDS = "lb",
     OUNCES = "oz",
 }
 
-registerEnumType(CurrencyCodes, {
-    name: "CurrencyCodes",
-    description: "Supported payment currencies, ISO 4217 format"
+registerEnumType(MassUnit, {
+    name: "MassUnit",
+    description: "Supported measurement units for mass"
 })
 
-registerEnumType(MeasurementUnits, {
-    name: "MeasurementUnits",
-    description: "Supported measurement units, metric and imperial"
+export enum VegetableName {
+    TOMATOE = "Tomatoe",
+    ASPARAGUS = "Asparagus",
+    OTHER = "Other"
+}
+
+registerEnumType(VegetableName, {
+    name: "VegetableName",
+    description: "Indexed vegeable names, or other"
+})
+
+export enum VegetableState {
+    AVAILABLE = "available",
+    GROWING = "growing",
+    UNLISTED = "unlisted"
+}
+
+registerEnumType(VegetableState, {
+    name: "VegetableState",
+    description: "3 states of a vegetable"
 })

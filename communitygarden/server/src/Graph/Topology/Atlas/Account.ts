@@ -1,8 +1,8 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { BaseEntity, Column, CreateDateColumn, Entity, Generated, JoinColumn, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { AccountRole, AccountType } from "../Figures/EnumTypes";
-import { Geocode } from "../Figures/ObjectTypes";
 import { Farm } from "./Farm";
+import { Geocode } from "./Geocode";
 
 @ObjectType()
 @Entity()
@@ -10,15 +10,6 @@ export class Account extends BaseEntity {
     @Field()
     @PrimaryGeneratedColumn()
     id!: number;
-
-    @Field(() => Farm, { nullable: true })
-    @OneToOne(() => Farm, farm => farm.account)
-    @JoinColumn()
-    farm: Farm;
-
-    @Field(() => Int, { nullable: true })
-    @Column({ nullable: true })
-    farmId: number;
 
     @Field(() => String)
     @CreateDateColumn()
@@ -33,6 +24,20 @@ export class Account extends BaseEntity {
     @Generated("uuid")
     cg: string;
 
+    @Field(() => Int, { nullable: true })
+    @Column({ nullable: true })
+    farmId: number;
+
+    @Field(() => Farm, { nullable: true })
+    @OneToOne(() => Farm, farm => farm.account, { onDelete: "CASCADE" })
+    @JoinColumn()
+    farm: Farm;
+
+    @Field(() => Geocode)
+    @OneToOne(() => Geocode, geocode => geocode.account)
+    @JoinColumn()
+    geocode: Geocode;
+
     @Field(() => AccountRole)
     @Column({ type: "enum", enum: AccountRole, default: AccountRole.CG })
     role!: AccountRole;
@@ -42,16 +47,12 @@ export class Account extends BaseEntity {
     account_type!: AccountType;
 
     @Field()
-    @Column({ default: true })
+    @Column({ default: false })
     locked: boolean;
 
     @Field()
     @Column({ default: false })
     verified_email: boolean;
-
-    @Field(() => Geocode)
-    @Column({ type: "jsonb" })
-    geocode: Geocode;
 
     @Field()
     @Column()

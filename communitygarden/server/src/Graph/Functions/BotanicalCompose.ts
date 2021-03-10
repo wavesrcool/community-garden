@@ -1,4 +1,4 @@
-import { BotanicalVegetable } from "../../../Graph/Topology/Figures/ObjectTypes";
+import { BotanicalVegetable } from "../Topology/Figures/ObjectTypes";
 
 const BotanicalCompose = {
     CreateBotanicalVegetable: async (index: string): Promise<BotanicalVegetable | null> => {

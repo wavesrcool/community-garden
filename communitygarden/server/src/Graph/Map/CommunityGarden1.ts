@@ -1,128 +1,186 @@
 import "reflect-metadata";
-import { Arg, Ctx, Mutation, Resolver } from "type-graphql";
-import { v4 } from "uuid";
-import argon2 from "argon2"
-import sendgrid from "@sendgrid/mail"
-
-import { DeleteAccountInput, UpdateAccountIdentityInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateFarmGeocodeInput } from "../Topology/Figures/InputTypes";
-import { PublicResponse, ErrorList } from "../Topology/Figures/ObjectTypes";
-import GraphValidate from "../Functions/Validate/GraphValidate";
-import GraphCompose from "../Functions/Compose/GraphCompose";
+import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
+import { DualCredential, SignUpPublicInput, SignUpFarmInput, UpdateAccountIdentityInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput } from "../Topology/Figures/InputTypes";
+import { PublicResponse, ErrorList, SignUpResponse, GraphResponse } from "../Topology/Figures/ObjectTypes";
+import GraphValidate from "../Functions/GraphValidate";
+import GraphCompose from "../Functions/GraphCompose";
+import { LocalFood } from "../../CommunityGarden/core";
 import { Account } from "../Topology/Atlas/Account";
-import { LocalFood } from "server/src/CommunityGarden/core";
-
-const COOKIE = process.env.COOKIE;
-const PREFIX = process.env.REDIS_FORGOT_PASSWORD;
 
 @Resolver()
 export class CommunityGarden1 {
-    @Mutation(() => PublicResponse)
-    async changePassword(
-        @Arg("token") token: string,
-        @Arg("newPassword") newPassword: string,
-        @Ctx() { req, redis }: LocalFood
-    ): Promise<PublicResponse> {
-        const errors = await GraphValidate.ChangePassword(newPassword);
+    @Mutation(() => SignUpResponse)
+    async signUpPublic(
+        @Arg("input") input: SignUpPublicInput,
+        @Ctx() { req }: LocalFood,
+    ): Promise<SignUpResponse> {
+        const errors: ErrorList[] | null = await GraphValidate.SignUpPublic(input);
         if (errors) {
             return { errors };
         }
 
+        const resp: SignUpResponse = await GraphCompose.SignUpPublic(input);
+        console.log("Community Garden server... signUpPublic, success...", resp)
 
-        const key = PREFIX + token;
-        const account_cg = await redis.get(key);
+        if (resp.errors) {
+            return { errors: resp.errors };
+        }
 
-        if (!account_cg) {
+        if (!resp.account) {
             return {
                 errors: [
                     {
-                        path: "changePassword",
-                        message: `Token expired or tampered: ${token}`
+                        path: "signUpAccount",
+                        message: `Bad response: ${resp}`
                     }
                 ],
             };
         }
 
-        const account = await Account.findOne({ where: { cg: account_cg } });
+        req.session.publicId = resp.account;
 
-        if (!account) {
+        /*
+        await CommunityGarden.SendEmail(
+            {
+                to: input.email,
+                from: "wavesrcool@icloud.com",
+                subject: "Verify your email address",
+                text: `${resp.account}`
+            }
+        );*/
+
+        console.log("Community Garden server, SignUpPublic, success...", resp)
+        return {
+            username: resp.username,
+            account: resp.account,
+        }
+    };
+
+    @Mutation(() => SignUpResponse)
+    async signUpFarm(
+        @Arg("input") input: SignUpFarmInput,
+        @Ctx() { req }: LocalFood,
+    ): Promise<SignUpResponse> {
+        const errors: ErrorList[] | null = await GraphValidate.SignUpFarm(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: SignUpResponse = await GraphCompose.SignUpFarm(input);
+
+        if (resp.errors) {
+            return { errors: resp.errors };
+        }
+
+        if (!resp.account || !resp.farm) {
             return {
                 errors: [
                     {
-                        path: "changePassword",
-                        message: `User no longer exists, token: ${token}`
+                        path: "signUpFarm",
+                        message: `Bad response: ${resp}`
                     }
                 ],
             };
         }
 
-        await Account.update(
-            { cg: account.cg },
-            { password: await argon2.hash(newPassword) }
-        );
+        req.session.publicId = resp.account;
+        req.session.farmId = resp.farm;
 
-        await redis.del(key);
+        /*
+        await CommunityGarden.SendEmail(
+            {
+                to: input.email,
+                from: "wavesrcool@icloud.com",
+                subject: "Verify your email address",
+                text: `${resp.account}`
+            }
+        );*/
 
-        // log account in
-        req.session.publicId = account.cg;
-        return { account };
-
+        console.log("Community Garden server... SignUpFarm, success...", resp)
+        return {
+            username: resp.username,
+            account: resp.account,
+            farm: resp.farm,
+        }
     }
 
     @Mutation(() => Boolean)
-    async forgotPassword(
-        @Arg("email") email: string,
-        @Ctx() { redis }: LocalFood
-    ) {
-        const resp: PublicResponse = await GraphCompose.ForgotPassword(email);
-        if (resp.errors) {
-            return false
+    async signUpVerifyEmail(
+        @Arg("input") input: string
+    ): Promise<Boolean> {
+        if (input) {
+            return true
         }
-
-        if (resp.account) {
-            // create a token... store the token in redis associated with the account cg
-            // when 
-            const token = v4();
-
-            // (key) searchable prefix (value) account.cg
-            // expiry in 1 hour
-            await redis.set(PREFIX + token, resp.account.cg, "ex", 1000 * 60 * 60);
-
-            const reset_html = `<a href="http://localhost:3000/change-password/${token}">reset password</a>`;
-
-            const api_key = process.env.COMMUNITY_GARDEN_SENDGRID_API_KEY
-            sendgrid.setApiKey(api_key as string)
-            const msg = {
-                to: 'ilovesunrises@icloud.com', // Change to your recipient
-                from: 'wavesrcool@icloud.com', // Change to your verified sender
-                subject: 'Change Password',
-                //text: 'and easy to do anywhere, even with Node.js',
-                html: reset_html,
-            }
-            sendgrid
-                .send(msg)
-                .then(() => {
-                    console.log('Email sent')
-                })
-                .catch((error) => {
-                    console.error(error)
-                })
-
-            return true;
-        }
-
-        return false;
-
+        return false
     }
+
+    @Mutation(() => PublicResponse)
+    async login(
+        @Arg("login_credentials") login_credentials: DualCredential,
+        @Ctx() { req }: LocalFood,
+    ): Promise<PublicResponse> {
+        const errors: ErrorList[] | null = await GraphValidate.Login(login_credentials);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: PublicResponse = await GraphCompose.LoginAccount(login_credentials);
+
+        if (resp.errors) {
+            return { errors: resp.errors }
+        }
+
+        else if (resp.account && resp.account.farm) {
+            req.session.publicId = resp.account.cg;
+            req.session.farmId = resp.account.farm.cg;
+            console.log("Community Garden server... login, success...", resp.account.username)
+            return resp;
+        }
+
+        else if (resp.account && !resp.account.farm) {
+            req.session.publicId = resp.account.cg;
+            //console.log(req.session)
+            return resp;
+        }
+
+        else {
+            return {
+                errors: [
+                    {
+                        path: "login",
+                        message: `Else condition: ${login_credentials.username}`
+                    }
+                ],
+            };
+        }
+    };
+
+    @Mutation(() => Boolean)
+    async logout(
+        @Ctx() { req, res }: LocalFood
+    ): Promise<Boolean> {
+        return new Promise(yay => req.session.destroy(err => {
+            res.clearCookie(process.env.COOKIE_NAME as string);
+            if (err) {
+                console.log(`Community Garden server... error, \'logout\': ${err}`);
+                yay(false);
+                return;
+            }
+            yay(true);
+        }));
+    };
+
     @Mutation(() => Boolean)
     async deleteAccount(
-        @Arg("delete_credentials") delete_credentials: DeleteAccountInput,
+        @Arg("input") input: DualCredential
+        ,
         @Ctx() { req, res }: LocalFood
     ): Promise<Boolean> {
         if (!req.session.publicId) {
-            console.log(`Community Garden, \'deleteAccount\' cookie: ${req.session.publicId}`);
+            console.log(`Community Garden server... error, \'deleteAccount\' cookie: ${req.session.publicId}`);
             return false;
         }
-        const resp: PublicResponse = await GraphCompose.DeleteAccount(delete_credentials);
+        const resp: GraphResponse = await GraphCompose.DeleteAccount(input, req.session.publicId);
 
         if (resp.errors) {
             console.log(`Community Garden, \'deleteAccount\' errors: ${resp.errors[0].message}`);
@@ -131,7 +189,7 @@ export class CommunityGarden1 {
 
         if (resp.deleted == true) {
             return new Promise(yay => req.session.destroy(err => {
-                res.clearCookie(COOKIE as string);
+                res.clearCookie(process.env.COOKIE_NAME as string);
                 if (err) {
                     console.log(`Community Garden, \'deleteAccount\' destroy... : ${err}`);
                     yay(false);
@@ -145,9 +203,33 @@ export class CommunityGarden1 {
         }
     }
 
+    @Mutation(() => Boolean)
+    async deleteFarm(
+        @Arg("input") input: DualCredential
+        ,
+        @Ctx() { req }: LocalFood
+    ): Promise<Boolean> {
+        if (!req.session.publicId || !req.session.farmId) {
+            console.log(`Community Garden, \'deleteAccount\' cookie: ${req.session.publicId}, ${req.session.farmId}`);
+            return false;
+        }
+        const resp: GraphResponse = await GraphCompose.DeleteFarm(input, req.session.publicId, req.session.farmId);
+        console.log("deleteFarm,", resp)
+        if (resp.errors) {
+            console.log(`Community Garden, \'deleteAccount\' errors: ${resp.errors[0].message}`);
+            return false;
+        }
+        else if (resp.deleted == true) {
+            return true
+        }
+        else {
+            return false;
+        }
+    }
+
     @Mutation(() => PublicResponse)
     async updateAccountIdentity(
-        @Arg("update_data") update_data: UpdateAccountIdentityInput,
+        @Arg("input") input: UpdateAccountIdentityInput,
         @Ctx() { req }: LocalFood
     ): Promise<PublicResponse> {
         if (!req.session.publicId) {
@@ -161,12 +243,13 @@ export class CommunityGarden1 {
             };
         }
 
-        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountIdentity(update_data);
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountIdentity(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.UpdateAccountIdentity(update_data, req.session.publicId);
+        const resp: PublicResponse = await GraphCompose.UpdateAccountIdentity(input, req.session.publicId);
+        console.log("updateAccountIdentity", resp);
 
         if (resp.errors) {
             return { errors: resp.errors };
@@ -174,7 +257,6 @@ export class CommunityGarden1 {
 
         else if (resp.account) {
             //req.session.publicId = resp.account.cg;
-            //console.log(resp);
             return resp;
         }
 
@@ -192,7 +274,7 @@ export class CommunityGarden1 {
 
     @Mutation(() => PublicResponse)
     async updateAccountEmail(
-        @Arg("update_data") update_data: UpdateAccountEmailInput,
+        @Arg("input") input: UpdateAccountEmailInput,
         @Ctx() { req }: LocalFood
     ): Promise<PublicResponse> {
         if (!req.session.publicId) {
@@ -206,12 +288,12 @@ export class CommunityGarden1 {
             };
         }
 
-        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountEmail(update_data);
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountEmail(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.UpdateAccountEmail(update_data, req.session.publicId);
+        const resp: PublicResponse = await GraphCompose.UpdateAccountEmail(input, req.session.publicId);
 
         if (resp.errors) {
             return { errors: resp.errors };
@@ -235,11 +317,11 @@ export class CommunityGarden1 {
         }
     };
 
-    @Mutation(() => PublicResponse)
+    @Mutation(() => GraphResponse)
     async updateAccountGeocode(
-        @Arg("update_data") update_data: UpdateAccountGeocodeInput,
+        @Arg("input") input: UpdateAccountGeocodeInput,
         @Ctx() { req }: LocalFood
-    ): Promise<PublicResponse> {
+    ): Promise<GraphResponse> {
         if (!req.session.publicId) {
             return {
                 errors: [
@@ -251,77 +333,56 @@ export class CommunityGarden1 {
             };
         }
 
-        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountGeocode(update_data);
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountGeocode(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.UpdateAccountGeocode(update_data, req.session.publicId);
+        const resp: GraphResponse = await GraphCompose.UpdateAccountGeocode(input, req.session.publicId);
+        console.log("updateAccountGeocode", resp);
 
-        if (resp.errors) {
-            return { errors: resp.errors };
-        }
+        return {
+            errors: resp.errors,
+            account: resp.account,
+            geocode: resp.geocode,
+            farm: resp.farm,
+            vegetable: resp.vegetable
+        };
+    }
 
-        else if (resp.account) {
-            //req.session.publicId = resp.account.cg;
-            //console.log(resp);
-            return resp;
-        }
+    @Query(() => [Account])
+    async accounts(): Promise<Account[]> {
+        return Account.find()
+    }
 
-        else {
-            return {
-                errors: [
-                    {
-                        path: "updateAccountGeocode",
-                        message: `Else condition: ${req.session.publicId}`
-                    }
-                ],
-            };
-        }
-    };
-
-    @Mutation(() => PublicResponse)
-    async updateFarmGeocode(
-        @Arg("update_data") update_data: UpdateFarmGeocodeInput,
-        @Ctx() { req }: LocalFood
+    @Query(() => PublicResponse)
+    async account(
+        @Arg("username") username: string,
+        //@Ctx() { req }: LocalFood,
     ): Promise<PublicResponse> {
-        if (!req.session.farmId) {
+        /*if (!req.session.publicId) {
             return {
                 errors: [
                     {
-                        path: "updateAccountGeocode",
-                        message: `Cookie farmId: ${req.session.farmId}`
+                        path: "account",
+                        message: "No publicId on cookie"
                     }
-                ],
+                ]
             };
+        }*/
+        const account = await Account.findOne({ where: { username } });
+        return { account };
+    }
+
+    @Query(() => Account, { nullable: true })
+    async active(
+        @Ctx() { req }: LocalFood
+    ) {
+        if (!req.session.publicId) {
+            return null;
         }
 
-        const errors: ErrorList[] | null = await GraphValidate.UpdateFarmGeocode(update_data);
-        if (errors) {
-            return { errors };
-        }
+        return Account.findOne({ where: { cg: req.session.publicId } });
+    }
 
-        const resp: PublicResponse = await GraphCompose.UpdateFarmGeocode(update_data, req.session.farmId);
-
-        if (resp.errors) {
-            return { errors: resp.errors };
-        }
-
-        else if (resp.account) {
-            //req.session.publicId = resp.account.cg;
-            //console.log(resp);
-            return resp;
-        }
-
-        else {
-            return {
-                errors: [
-                    {
-                        path: "updateAccountGeocode",
-                        message: `Else condition: ${req.session.publicId}`
-                    }
-                ],
-            };
-        }
-    };
 }
