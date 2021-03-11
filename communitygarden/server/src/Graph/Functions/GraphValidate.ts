@@ -1,9 +1,9 @@
 import "reflect-metadata";
+import Validation from "@cg/common"
 import ValidationError from 'yup/lib/ValidationError';
 import { Account } from "../Topology/Atlas/Account";
-import { SignUpPublicInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateAccountIdentityInput, UpdateFarmIdentityInput, VegetableCreateInput, QuantityMapCreateInput, ListAddInput, DualCredential } from '../Topology/Figures/InputTypes';
+import { SignUpPublicInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateAccountIdentityInput, UpdateFarmIdentityInput, VegetableCreateInput, QuantityMapCreateInput, ListAddInput, DualCredential, UpdateFarmDeliveryGradientInput } from '../Topology/Figures/InputTypes';
 import { ErrorList } from '../Topology/Figures/ObjectTypes';
-import Validation from "@cg/common"
 import { VegetableName } from "../Topology/Figures/EnumTypes";
 
 
@@ -90,9 +90,10 @@ const GraphValidate = {
 
     ChangePassword: async (password: string): Promise<ErrorList[] | null> => {
         try {
-            await Validation.change_password.validate(password, { abortEarly: false });
+            await Validation.change_password.validate({ password }, { abortEarly: false });
             return null;
         } catch (err) {
+            console.log(err)
             return formatYupError(err);
         }
     },
@@ -118,7 +119,7 @@ const GraphValidate = {
 
     UpdateAccountGeocode: async (data: UpdateAccountGeocodeInput): Promise<ErrorList[] | null> => {
         try {
-            await Validation.update_account_geocode.validate(data, { abortEarly: false });
+            await Validation.update_account_geocode_core.validate(data, { abortEarly: false });
             return null;
         } catch (err) {
             return formatYupError(err);
@@ -126,24 +127,21 @@ const GraphValidate = {
     },
 
     UpdateFarmIdentity: async (data: UpdateFarmIdentityInput): Promise<ErrorList[] | null> => {
-        if (!data.farm_name) {
-            return [
-                {
-                    path: "ValidateUpdateFarm",
-                    message: "A farm name is required"
-                }
-            ];
+        try {
+            await Validation.update_farm_identity.validate(data, { abortEarly: false });
+            return null;
+        } catch (err) {
+            return formatYupError(err);
         }
+    },
 
-        if (data.farm_name.length <= 3) {
-            return [
-                {
-                    path: "ValidateUpdateFarm",
-                    message: "A farm name must be at least 4 characters"
-                }
-            ];
+    UpdateFarmDeliveryGradient: async (data: UpdateFarmDeliveryGradientInput): Promise<ErrorList[] | null> => {
+        try {
+            await Validation.update_farm_delivery_gradient.validate(data, { abortEarly: false });
+            return null;
+        } catch (err) {
+            return formatYupError(err);
         }
-        return null;
     },
 
     /*

@@ -1,8 +1,9 @@
-import { Connection, createConnection, getConnectionOptions } from "typeorm";
+import { Connection, createConnection, getConnectionOptions, getManager } from "typeorm";
 import { Request, Response } from "express";
 import { Session, SessionData } from "express-session";
 import { Redis } from "ioredis";
 import { GraphQLClient } from "graphql-request";
+import { Account } from "../Graph/Topology/Atlas/Account";
 
 export type LocalFood = {
     req: Request & {
@@ -28,8 +29,37 @@ type SignUpEmail = {
 const CommunityGarden = {
     decode64: (str: string): string => Buffer.from(str, 'base64').toString('binary'),
     encode64: (str: string): string => Buffer.from(str, 'binary').toString('base64'),
-    angular_radius: async (): Promise<number> => {
+    AngularRadius: async (): Promise<number> => {
         return 0.001567855942887398;
+    },
+
+    PublicCookie: async (publicId: string): Promise<Boolean> => {
+        if (!publicId) {
+            return false
+        } else {
+            return true
+        }
+    },
+
+    FarmCookie: async (farmId: string): Promise<Boolean> => {
+        if (!farmId) {
+            return false;
+        } else {
+            return true;
+        }
+    },
+
+    UniqueEmail: async (email: string): Promise<Boolean> => {
+        const account_with_email = await getManager()
+            .createQueryBuilder(Account, "account")
+            .where("account.email = :email", { email })
+            .getOne();
+
+        if (!account_with_email) {
+            return true;
+        } else {
+            return false;
+        }
     },
 
     BraintreeClient: async (): Promise<GraphQLClient> => {
@@ -57,21 +87,28 @@ const CommunityGarden = {
     },
 
 
-    SendEmail: async (data: SignUpEmail) => {
-        const sgMail = require('@sendgrid/mail');
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    SendEmail: async (data: SignUpEmail): Promise<Boolean> => {
+        try {
+            const sgMail = require('@sendgrid/mail');
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-        const msg = {
-            to: data.to,
-            from: data.from,
-            subject: data.subject,
-            text: data.text,
-        };
-        sgMail.send(msg).
-            then(console.log(`Email sent to ${data.to}`)).
-            catch((err: any) => {
-                console.log(err);
-            });
+            const msg = {
+                to: data.to,
+                from: data.from,
+                subject: data.subject,
+                text: data.text,
+            };
+            sgMail.send(msg).
+                then(console.log(`Email sent to ${data.to}`)).
+                catch((err: any) => {
+                    console.log(err);
+                    return false;
+                });
+            return true;
+        } catch (err) {
+            console.log(err)
+            return false
+        }
     }
 
 

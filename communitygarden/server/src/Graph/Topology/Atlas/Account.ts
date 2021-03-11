@@ -74,7 +74,7 @@ export class Account extends BaseEntity {
     @Column({ unique: true })
     email!: string;
 
-    // no @Field ... cannot be queried over qraphql
+    // omit Field()
     @Column()
     password!: string;
 }

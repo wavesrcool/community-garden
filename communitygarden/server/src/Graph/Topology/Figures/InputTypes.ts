@@ -1,5 +1,6 @@
 import { InputType, Field, Float, Int } from "type-graphql";
 import { iso3166, MassUnit, VegetableName, VegetableState } from "./EnumTypes";
+
 @InputType()
 export class GeocodeInput {
     @Field(() => Float)
@@ -98,14 +99,14 @@ export class SignUpFarmInput {
     @Field()
     farm_name!: string;
 
+    @Field(() => Boolean)
+    approves_pickup!: boolean;
+
     @Field(() => GeocodeInput)
     geocode!: GeocodeInput;
 
     @Field(() => [DeliveryGradientInput])
     delivery_gradient!: DeliveryGradientInput[];
-
-    @Field(() => Boolean)
-    approves_pickup!: boolean;
 }
 
 @InputType()
@@ -136,6 +137,12 @@ export class UpdateAccountEmailInput {
 }
 
 @InputType()
+export class UpdateAccountUsernameInput {
+    @Field()
+    username: string;
+}
+
+@InputType()
 export class UpdateAccountGeocodeInput {
     @Field(() => GeocodeInput)
     geocode: GeocodeInput;
@@ -147,16 +154,19 @@ export class UpdateFarmIdentityInput {
     farm_name: string;
 
     @Field(() => Boolean)
-    allow_pickup?: boolean;
+    approves_pickup: boolean;
 }
 
 @InputType()
-export class UpdateFarmGeocodeInput {
-    @Field(() => GeocodeInput)
-    geocode: GeocodeInput;
+export class UpdateFarmEmailInput {
+    @Field()
+    email: string;
+}
 
+@InputType()
+export class UpdateFarmDeliveryGradientInput {
     @Field(() => [DeliveryGradientInput])
-    delivery_gradient?: DeliveryGradientInput[];
+    delivery_gradient: DeliveryGradientInput[];
 }
 
 @InputType()

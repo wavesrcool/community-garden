@@ -108,7 +108,6 @@ export class Geocode {
     @Column({ type: "float" })
     lng_max: number;
 
-    // maximum delivery distance angular radius
     @Field(() => Float)
     @Column({ type: "float" })
     ar: number;

@@ -38,10 +38,6 @@ export class Farm extends BaseEntity {
     @OneToMany(() => Vegetable, vegetable => vegetable.farm)
     vegetables: Vegetable[];
 
-    @Field(() => [DeliveryGradient])
-    @Column({ type: "jsonb" })
-    delivery_gradient: DeliveryGradient[];
-
     @Field()
     @Column()
     farm_name: string;
@@ -49,4 +45,8 @@ export class Farm extends BaseEntity {
     @Field()
     @Column()
     approves_pickup: boolean;
+
+    @Field(() => [DeliveryGradient])
+    @Column({ type: "jsonb" })
+    delivery_gradient: DeliveryGradient[];
 }

@@ -186,7 +186,7 @@ export class CommunityGarden0 {
             return false;
         }
 
-        if (resp.deleted == true) {
+        if (resp.deleted) {
             return new Promise(yay => req.session.destroy(err => {
                 res.clearCookie(process.env.COOKIE_NAME as string);
                 if (err) {
@@ -194,6 +194,7 @@ export class CommunityGarden0 {
                     yay(false);
                     return;
                 }
+                console.log("Community Garden server... deleteAccount, success...", resp.deleted)
                 yay(true);
             }));
         } else {
@@ -217,7 +218,7 @@ export class CommunityGarden0 {
             console.log(`Community Garden, \'deleteAccount\' errors: ${resp.errors[0].message}`);
             return false;
         }
-        else if (resp.deleted == true) {
+        else if (resp.deleted) {
             return true
         }
         else {
@@ -246,8 +247,7 @@ export class CommunityGarden0 {
             return { errors };
         }
 
-        const resp: PublicResponse = await GraphCompose.UpdateAccountIdentity(input, req.session.publicId);
-        console.log("updateAccountIdentity", resp);
+        const resp: GraphResponse = await GraphCompose.UpdateAccountIdentity(input, req.session.publicId);
 
         if (resp.errors) {
             return { errors: resp.errors };

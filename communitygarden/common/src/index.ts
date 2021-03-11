@@ -24,6 +24,9 @@ const Directives = {
 
     latInvalid: "Please enter a latitude",
     lngInvalid: "Please enter a longitude",
+
+    deliveryGradientRadiusInvalid: "Please enter a delivery radius",
+    deliveryGradientCostInvalid: "Please enter a delivery cost"
 }
 
 const Validation = {
@@ -50,22 +53,17 @@ const Validation = {
             email: yup.string().min(3, Directives.emailTooShort).max(100, Directives.emailTooLong).email(Directives.emailInvalid).required(),
             username: yup.string().min(3, Directives.usernameTooShort).max(50, Directives.usernameTooLong).required(),
             password: yup.string().min(8,).max(255).required(),
+            farm_name: yup.string().min(3, Directives.usernameTooShort).max(50, Directives.usernameTooLong).required(),
+            approves_pickup: yup.boolean().required(),
             geocode: yup.object({
                 lat: yup.number().required(Directives.latInvalid),
                 lng: yup.number().required(Directives.lngInvalid),
             }),
-            farm_name: yup.string().min(3, Directives.usernameTooShort).max(50, Directives.usernameTooLong).required(),
-        }
-    ),
+            delivery_gradient: yup.array(yup.object({
+                radius: yup.number().required(Directives.deliveryGradientRadiusInvalid),
+                cost: yup.number().required(Directives.deliveryGradientCostInvalid)
 
-    account_register: yup.object(
-        {
-            first_name: yup.string().min(1, Directives.firstNameTooShort).max(50, Directives.firstNameTooLong).required(),
-            last_name: yup.string().min(1, Directives.lastNameTooShort).max(50, Directives.lastNameTooLong).required(),
-            birth_date: yup.string().min(8, Directives.birthdateInvalid).max(20, Directives.birthdateInvalid).required(),
-            email: yup.string().min(3, Directives.emailTooShort).max(100, Directives.emailTooLong).email(Directives.emailInvalid).required(),
-            username: yup.string().min(3, Directives.usernameTooShort).max(20, Directives.usernameTooLong).required(),
-            password: yup.string().min(8,).max(255).required(),
+            }))
         }
     ),
 
@@ -96,7 +94,13 @@ const Validation = {
         }
     ),
 
-    update_account_geocode: yup.object(
+    update_account_username: yup.object(
+        {
+            username: yup.string().min(3, Directives.usernameTooShort).max(50, Directives.usernameTooLong).required(),
+        }
+    ),
+
+    update_account_geocode_core: yup.object(
         {
             geocode: yup.object({
                 lat: yup.number().required(Directives.latInvalid),
@@ -104,6 +108,25 @@ const Validation = {
             })
         }
     ),
+
+    update_farm_identity: yup.object(
+        {
+            farm_name: yup.string().min(3, Directives.usernameTooShort).max(50, Directives.usernameTooLong).required(),
+            approves_pickup: yup.boolean().required(),
+        }
+    ),
+
+    update_farm_delivery_gradient: yup.object(
+        {
+            delivery_gradient: yup.array(yup.object({
+                radius: yup.number().required(Directives.deliveryGradientRadiusInvalid),
+                cost: yup.number().required(Directives.deliveryGradientCostInvalid)
+
+            }))
+        }
+    ),
+
+
 
     directives: Directives,
 

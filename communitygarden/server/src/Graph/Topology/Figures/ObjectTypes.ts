@@ -1,9 +1,12 @@
+import "reflect-metadata"
 import { ObjectType, Field, Float } from "type-graphql";
 import { Account } from "../Atlas/Account";
 import { Farm } from "../Atlas/Farm";
 import { Geocode } from "../Atlas/Geocode";
 import { List } from "../Atlas/List";
 import { Vegetable } from "../Atlas/Vegetable";
+
+
 
 @ObjectType()
 export class ErrorList {
@@ -49,15 +52,25 @@ export class GraphResponse {
     @Field(() => Geocode, { nullable: true })
     geocode?: Geocode;
 
-    @Field(() => Boolean, { nullable: true })
-    deleted?: boolean;
 
     @Field(() => Boolean, { nullable: true })
     updated?: boolean;
+
+    @Field(() => Boolean, { nullable: true })
+    deleted?: boolean;
 }
 
 @ObjectType()
 export class PublicResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
+
+    @Field(() => Account, { nullable: true })
+    account?: Account;
+}
+
+@ObjectType()
+export class LoginResponse {
     @Field(() => [ErrorList], { nullable: true })
     errors?: ErrorList[];
 

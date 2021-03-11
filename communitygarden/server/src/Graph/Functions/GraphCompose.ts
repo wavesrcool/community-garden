@@ -3,13 +3,12 @@ import { toRadians, EARTH_RADIUS } from "spherical-geometry-js";
 import { createQueryBuilder, getConnection, getManager } from "typeorm";
 
 import { AccountType } from "../Topology/Figures/EnumTypes";
-import { DualCredential, SignUpPublicInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountIdentityInput, UpdateFarmIdentityInput, VegetableCreateInput, QuantityMapCreateInput, ListAddInput, UpdateAccountGeocodeInput } from "../Topology/Figures/InputTypes";
-import { GraphResponse, ListResponse, PublicResponse, SignUpResponse, VegetableResponse } from "../Topology/Figures/ObjectTypes";
+import { DualCredential, SignUpPublicInput, SignUpFarmInput, UpdateAccountEmailInput, UpdateAccountIdentityInput, UpdateFarmIdentityInput, VegetableCreateInput, QuantityMapCreateInput, UpdateAccountGeocodeInput, UpdateFarmDeliveryGradientInput } from "../Topology/Figures/InputTypes";
+import { GraphResponse, LoginResponse, PublicResponse, SignUpResponse, VegetableResponse } from "../Topology/Figures/ObjectTypes";
 import argon2 from "argon2";
 import { Account } from "../Topology/Atlas/Account";
 import { Vegetable } from "../Topology/Atlas/Vegetable";
 import { QuantityMap } from "../Topology/Atlas/QuantityMap";
-import { List } from "../Topology/Atlas/List";
 import { Geocode } from "../Topology/Atlas/Geocode";
 import CommunityGarden from "../../../src/CommunityGarden/core";
 import { Farm } from "../Topology/Atlas/Farm";
@@ -34,11 +33,10 @@ const GraphCompose = {
                 .output(["id", "cg", "username"])
                 .execute();
             const raw_account: Account = create_account.raw[0];
-            //console.log("r", raw_account)
 
             const lat_r = toRadians(data.geocode.lat);
             const lng_r = toRadians(data.geocode.lng);
-            const ar = await CommunityGarden.angular_radius();
+            const ar = await CommunityGarden.AngularRadius();
             const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
             const lat_min = lat_r - ar;
             const lng_min = lng_r - delta_lon;
@@ -89,7 +87,18 @@ const GraphCompose = {
                     errors: [
                         {
                             path: "SignUpPublic",
-                            message: `Fatal error: ${data.username}`
+                            message: `Fatal GraphShape error: ${data.username}`
+                        }
+                    ]
+                };
+            }
+
+            if (!(db_account.username == data.username)) {
+                return {
+                    errors: [
+                        {
+                            path: "SignUpPublic",
+                            message: `Fatal GraphShape error: ${data.username}`
                         }
                     ]
                 };
@@ -115,6 +124,7 @@ const GraphCompose = {
         try {
             const lat_r = toRadians(data.geocode.lat);
             const lng_r = toRadians(data.geocode.lng);
+            // get the largest radius value from delivery_gradient and use to compute ar
             const ar = (Math.max.apply(Math, data.delivery_gradient.map(function (o) { return o.radius }))) / EARTH_RADIUS * 1000;
             const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
             const lat_min = lat_r - ar;
@@ -238,7 +248,7 @@ const GraphCompose = {
         }
     },
 
-    LoginAccount: async (data: DualCredential): Promise<PublicResponse> => {
+    LoginAccount: async (data: DualCredential): Promise<LoginResponse> => {
         const account = await getManager()
             .createQueryBuilder(Account, "account")
             .where("account.username = :username", { username: data.username })
@@ -292,7 +302,6 @@ const GraphCompose = {
 
             if (!account) {
                 return {
-                    deleted: false,
                     errors: [
                         {
                             path: "DeleteAccount",
@@ -304,7 +313,6 @@ const GraphCompose = {
 
             if (!(account.cg == publicId)) {
                 return {
-                    deleted: false,
                     errors: [
                         {
                             path: "DeleteAccount",
@@ -318,7 +326,6 @@ const GraphCompose = {
 
             if (!valid) {
                 return {
-                    deleted: false,
                     errors: [
                         {
                             path: "DeleteAccount",
@@ -328,28 +335,33 @@ const GraphCompose = {
                 };
             }
 
-
-            const deleted_account = await getConnection()
+            const deleted = await getConnection()
                 .createQueryBuilder()
                 .delete()
                 .from(Account)
                 .where("id = :id", { id: account.id })
                 .returning('*')
                 .execute();
+            const deleted_account: Account = deleted.raw[0];
 
-            if (deleted_account.raw[0].username == data.username) {
-                return { deleted: true }
+            if (deleted_account.cg == publicId) {
+                return {
+                    deleted: true,
+                    account: deleted_account
+                }
             }
 
-            return {
-                deleted: false,
-                errors: [
-                    {
-                        path: "DeleteAccount",
-                        message: `Fatal error: ${data.username}`
-                    }
-                ],
-            };
+            else {
+                return {
+                    errors: [
+                        {
+                            path: "DeleteAccount",
+                            message: `Else condition ${data.username}`
+                        }
+                    ],
+                }
+            }
+
         } catch (err) {
             return {
                 errors: [
@@ -386,7 +398,7 @@ const GraphCompose = {
                     errors: [
                         {
                             path: "DeleteAccount",
-                            message: `UUID account incompatibility: ${data.username}`
+                            message: `UUID cookie incompatibility account: ${publicId}`
                         }
                     ],
                 }
@@ -408,7 +420,7 @@ const GraphCompose = {
                     errors: [
                         {
                             path: "DeleteAccount",
-                            message: `UUID farm incompatibility: ${data.username}`
+                            message: `UUID cookie incompatibility: farm ${farmId}`
                         }
                     ],
                 }
@@ -442,32 +454,32 @@ const GraphCompose = {
                 .where("cg = :cg", { cg: farmId })
                 .returning('*')
                 .execute();
+            const raw_deleted_farm: Farm = deleted_farm.raw[0]
 
-            console.log(deleted_farm)
-
-            //modify account to be type PUBLIC
-            await getConnection()
-                .createQueryBuilder()
-                .update(Account)
-                .set({ account_type: AccountType.PUBLIC })
-                .where("id = :id", { id: account.id })
-                .execute();
-
-            return { deleted: true }
-
-            /*
-            if (deleted_farm.raw[0].username == data.username) {
-                
+            if (raw_deleted_farm.cg == farmId) {
+                //modify account to be type PUBLIC
+                await getConnection()
+                    .createQueryBuilder()
+                    .update(Account)
+                    .set({ account_type: AccountType.PUBLIC })
+                    .where("id = :id", { id: account.id })
+                    .execute();
+                return {
+                    deleted: true,
+                    farm: raw_deleted_farm
+                }
             }
 
-            return {
-                errors: [
-                    {
-                        path: "DeleteAccount",
-                        message: `Fatal error: ${data.username}`
-                    }
-                ],
-            };*/
+            else {
+                return {
+                    errors: [
+                        {
+                            path: "DeleteAccount",
+                            message: `Else condition ${data.username}`
+                        }
+                    ],
+                }
+            }
         } catch (err) {
             return {
                 errors: [
@@ -480,196 +492,181 @@ const GraphCompose = {
         }
     },
 
-    UpdateAccountIdentity: async (data: UpdateAccountIdentityInput, publicId: string): Promise<PublicResponse> => {
-        const update = await getConnection()
-            .createQueryBuilder()
-            .update(Account)
-            .set(
-                {
-                    first_name: data.first_name,
-                    last_name: data.last_name,
-                    birth_date: data.birth_date,
-                })
-            .where("cg = :cg", { cg: publicId })
-            .returning('*')
-            .execute();
-        console.log("UpdateAccountIdentity ", update);
-        return { account: update.raw[0] };
-    },
-
-    UpdateAccountEmail: async (data: UpdateAccountEmailInput, publicId: string): Promise<PublicResponse> => {
-        const email_exists = await getManager()
-            .createQueryBuilder(Account, "account")
-            .where("account.email = :email", { email: data.email })
-            .getOne();
-
-        if (email_exists) {
-            return {
-                errors: [
-                    {
-                        path: "UpdateAccountEmail",
-                        message: `This email is in use: ${data.email}`
-                    }
-                ]
-            }
-        }
-
-        const update = await getConnection()
-            .createQueryBuilder()
-            .update(Account)
-            .set(
-                {
-                    email: data.email,
-                    verified_email: false,
-                })
-            .where("cg = :cg", { cg: publicId })
-            .returning('*')
-            .execute();
-        console.log("UpdateAccountEmail ", update);
-
-        //trigger new confirm email link
-        return { account: update.raw[0] };
-
-    },
-
-    UpdateAccountGeocode: async (data: UpdateAccountGeocodeInput, publicId: string): Promise<GraphResponse> => {
-        const lat_r = toRadians(data.geocode.lat);
-        const lng_r = toRadians(data.geocode.lng);
-        const ar = await CommunityGarden.angular_radius();
-        const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
-        const lat_min = lat_r - ar;
-        const lng_min = lng_r - delta_lon;
-        const lat_max = lat_r + ar;
-        const lng_max = lng_r + delta_lon;
-
-        const account_is = await createQueryBuilder(Account, "account")
-            .leftJoinAndSelect("account.geocode", "geocode")
-            .where("account.cg = :cg", { cg: publicId })
-            .getOne()
-
-        if (!account_is) {
-            return {
-                errors: [
-                    {
-                        path: "UpdateAccountGeocode",
-                        message: `No account with geocode publicId: ${publicId}`
-                    }
-                ]
-            }
-        }
-
-        await getConnection()
-            .createQueryBuilder()
-            .update(Geocode)
-            .set(
-                {
-                    lat: data.geocode.lat,
-                    lng: data.geocode.lng,
-                    lat_r,
-                    lng_r,
-                    lat_min,
-                    lat_max,
-                    lng_min,
-                    lng_max,
-                    ar,
-                    delta_lon,
-                })
-            .where("id = :id", { id: account_is.geocode.id })
-            .returning('*')
-            .execute();
-
-        const geocode = await createQueryBuilder(Geocode, "geocode")
-            .where("geocode.id = :id", { id: account_is.id })
-            .getOne()
-        console.log("updated geocode...", geocode)
-
-        return { geocode };
-    },
-
-    UpdateFarmIdentity: async (data: UpdateFarmIdentityInput, cg: string): Promise<PublicResponse> => {
-        const update = await getConnection()
-            .createQueryBuilder()
-            .update(Farm)
-            .set(
-                {
-                    farm_name: data.farm_name,
-                })
-            .where("cg = :cg", { cg })
-            .returning('*')
-            .execute();
-        console.log("UpdateFarmIdentity ", update);
-        return { account: update.raw[0] };
-    },
-    /*
-    UpdateFarmGeocode: async (data: UpdateFarmGeocodeInput, cg: string): Promise<PublicResponse> => {
-        const lat_r = toRadians(data.geocode.geolocation.lat);
-        const lng_r = toRadians(data.geocode.geolocation.lng);
-
-        if (!data.delivery_gradient) {
-            const farm = await getConnection()
+    UpdateAccountIdentity: async (data: UpdateAccountIdentityInput, publicId: string): Promise<GraphResponse> => {
+        try {
+            const updated_account = await getConnection()
                 .createQueryBuilder()
-                .select("farm")
-                .from(Farm, "farm")
-                .where("farm.cg = :cg", { cg })
-                .getOne();
+                .update(Account)
+                .set(
+                    {
+                        first_name: data.first_name,
+                        last_name: data.last_name,
+                        birth_date: data.birth_date,
+                    })
+                .where("cg = :cg", { cg: publicId })
+                .returning('*')
+                .execute();
 
-            if (farm) {
-                // use existing delivery gradient
-                const ar = (Math.max.apply(Math, farm.delivery_gradient.map(function (o) { return o.radius }))) / EARTH_RADIUS * 1000;
-                const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
-
-                const lat_min = lat_r - ar;
-                const lat_max = lat_r + ar;
-
-                const lng_min = lng_r - delta_lon;
-                const lng_max = lng_r + delta_lon;
-
-                const update = await getConnection()
-                    .createQueryBuilder()
-                    .update(Farm)
-                    .set(
+            if (!(updated_account.raw[0].cg == publicId)) {
+                return {
+                    errors: [
                         {
-                            geocode: data.geocode,
-                            lat_r,
-                            lng_r,
-                            lat_min,
-                            lat_max,
-                            lng_min,
-                            lng_max,
-                            ar,
-                        })
-                    .where("cg = :cg", { cg })
-                    .returning('*')
-                    .execute();
-                console.log("UpdateFarmGeocode ", update);
-                return { account: update.raw[0] };
+                            path: "UpdateAccountIdentity",
+                            message: `Updated account cg != ${publicId}`
+                        }
+                    ]
+                }
+            }
+
+            const account_2 = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.farm", "farm")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (account_2 && account_2.cg == publicId) {
+                //send email
+                return {
+                    updated: true,
+                    account: account_2,
+                };
             } else {
                 return {
                     errors: [
                         {
-                            path: "updateFarmGeocode",
-                            message: `Farm not found with cg: ${cg}`
+                            path: "UpdateAccountIdentity",
+                            message: `Else condition: publicId ${publicId}`
                         }
                     ]
-                };
+                }
             }
-        } else {
-            const ar = (Math.max.apply(Math, data.delivery_gradient.map(function (o) { return o.radius }))) / EARTH_RADIUS * 1000;
-            const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
+        } catch (err) {
+            return {
+                errors: [
+                    {
+                        path: `, ${err.severity}`,
+                        message: `${err.code}, ${err.detail}`
+                    }
+                ],
+            };
+        }
+    },
 
-            const lat_min = lat_r - ar;
-            const lat_max = lat_r + ar;
+    UpdateAccountEmail: async (data: UpdateAccountEmailInput, publicId: string): Promise<GraphResponse> => {
+        try {
+            const email_exists = await getManager()
+                .createQueryBuilder(Account, "account")
+                .where("account.email = :email", { email: data.email })
+                .getOne();
 
-            const lng_min = lng_r - delta_lon;
-            const lng_max = lng_r + delta_lon;
+            if (email_exists) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateAccountEmail",
+                            message: `This email is being used`
+                        }
+                    ]
+                }
+            }
 
-            const update = await getConnection()
+            const updated_account = await getConnection()
                 .createQueryBuilder()
-                .update(Farm)
+                .update(Account)
                 .set(
                     {
-                        delivery_gradient: data.delivery_gradient,
-                        geocode: data.geocode,
+                        email: data.email,
+                        verified_email: false,
+                    })
+                .where("cg = :cg", { cg: publicId })
+                .returning('*')
+                .execute();
+
+            if (!(updated_account.raw[0].cg == publicId)) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateAccountEmail",
+                            message: `Updated account cg != ${publicId}`
+                        }
+                    ]
+                }
+            }
+
+            const account_2 = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.farm", "farm")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (account_2 && account_2.cg == publicId) {
+                //send email
+                return {
+                    updated: true,
+                    account: account_2,
+                };
+            } else {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateAccountEmail",
+                            message: `Else condition: publicId ${publicId}`
+                        }
+                    ]
+                }
+            }
+
+        } catch (err) {
+            return {
+                errors: [
+                    {
+                        path: `, ${err.severity}`,
+                        message: `${err.code}, ${err.detail}`
+                    }
+                ],
+            };
+        }
+
+
+
+        //const account: Account = updated.raw[0
+
+    },
+
+    UpdateAccountGeocode: async (data: UpdateAccountGeocodeInput, publicId: string): Promise<GraphResponse> => {
+        try {
+            const lat_r = toRadians(data.geocode.lat);
+            const lng_r = toRadians(data.geocode.lng);
+            const ar = await CommunityGarden.AngularRadius();
+            const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
+            const lat_min = lat_r - ar;
+            const lng_min = lng_r - delta_lon;
+            const lat_max = lat_r + ar;
+            const lng_max = lng_r + delta_lon;
+
+            const account_1 = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (!account_1) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateAccountGeocode",
+                            message: `No account with geocode publicId: ${publicId}`
+                        }
+                    ]
+                }
+            }
+
+            await getConnection()
+                .createQueryBuilder()
+                .update(Geocode)
+                .set(
+                    {
+                        lat: data.geocode.lat,
+                        lng: data.geocode.lng,
                         lat_r,
                         lng_r,
                         lat_min,
@@ -677,14 +674,252 @@ const GraphCompose = {
                         lng_min,
                         lng_max,
                         ar,
+                        delta_lon,
                     })
-                .where("cg = :cg", { cg })
+                .where("id = :id", { id: account_1.geocode.id })
                 .returning('*')
                 .execute();
-            console.log("UpdateFarmGeocode ", update);
-            return { account: update.raw[0] };
+
+            const account_2 = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.farm", "farm")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (account_2 && account_2.cg == publicId) {
+                return {
+                    updated: true,
+                    account: account_2
+                };
+            }
+
+            else {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateAccountGeocode",
+                            message: `Else condition: publicId ${publicId}`
+                        }
+                    ]
+                }
+            }
+        } catch (err) {
+            return {
+                errors: [
+                    {
+                        path: `, ${err.severity}`,
+                        message: `${err.code}, ${err.detail}`
+                    }
+                ],
+            };
         }
-    },*/
+    },
+
+    UpdateFarmIdentity: async (data: UpdateFarmIdentityInput, publicId: string, farmId: string): Promise<GraphResponse> => {
+        try {
+            const updated_farm = await getConnection()
+                .createQueryBuilder()
+                .update(Farm)
+                .set(
+                    {
+                        farm_name: data.farm_name,
+                        approves_pickup: data.approves_pickup,
+                    })
+                .where("cg = :cg", { farmId })
+                .returning('*')
+                .execute();
+
+            if (!(updated_farm.raw[0].cg == farmId)) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmIdentity",
+                            message: `Updated farm cg != ${farmId}`
+                        }
+                    ]
+                }
+            }
+
+            const account_2 = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.farm", "farm")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (account_2 && (account_2.cg == publicId)) {
+                //send email
+                return {
+                    updated: true,
+                    account: account_2,
+                };
+            } else {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmIdentity",
+                            message: `Else condition: publicId ${publicId}`
+                        }
+                    ]
+                }
+            }
+        } catch (err) {
+            return {
+                errors: [
+                    {
+                        path: `, ${err.severity}`,
+                        message: `${err.code}, ${err.detail}`
+                    }
+                ],
+            };
+        }
+    },
+
+    UpdateFarmDeliveryGradient: async (data: UpdateFarmDeliveryGradientInput, publicId: string, farmId: string): Promise<GraphResponse> => {
+        try {
+            const db_farm = await createQueryBuilder(Farm, "farm")
+                .leftJoinAndSelect("farm.account", "account")
+                .where("farm.cg = :cg", { cg: farmId })
+                .getOne()
+
+            if (!db_farm) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: "No farm with cookie"
+                        }
+                    ]
+                }
+            }
+
+            if (!(db_farm.account.cg == publicId)) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: "Invalid cookie"
+                        }
+                    ]
+                }
+            }
+
+            const update_farm = await getConnection()
+                .createQueryBuilder()
+                .update(Farm)
+                .set(
+                    {
+                        delivery_gradient: data.delivery_gradient,
+                    })
+                .where("cg = :cg", { cg: farmId })
+                .returning('id')
+                .execute();
+
+            if (!update_farm) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: `!update_farm`
+                        }
+                    ]
+                }
+            }
+
+            const db_account = await createQueryBuilder(Account, "account")
+                .leftJoinAndSelect("account.geocode", "geocode")
+                .leftJoinAndSelect("account.farm", "farm")
+                .where("account.cg = :cg", { cg: publicId })
+                .getOne()
+
+            if (!db_account) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: `!db_account`
+                        }
+                    ]
+                }
+            }
+
+            const lat = db_account.geocode.lat;
+            const lng = db_account.geocode.lng
+
+            const lat_r = toRadians(lat);
+            const lng_r = toRadians(lng);
+
+            // get the largest radius value from delivery_gradient and use to compute ar
+            const ar = (Math.max.apply(Math, db_account.farm.delivery_gradient.map(function (o) { return o.radius }))) / EARTH_RADIUS * 1000;
+            if (!ar) {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: `!ar`
+                        }
+                    ]
+                }
+            }
+            const delta_lon = Math.asin((Math.sin(ar)) / (Math.cos(lat_r)));
+            const lat_min = lat_r - ar;
+            const lat_max = lat_r + ar;
+            const lng_min = lng_r - delta_lon;
+            const lng_max = lng_r + delta_lon;
+
+            const update_geocode = await getConnection()
+                .createQueryBuilder()
+                .update(Geocode)
+                .set(
+                    {
+                        lat,
+                        lng,
+                        lat_r,
+                        lng_r,
+                        lat_min,
+                        lat_max,
+                        lng_min,
+                        lng_max,
+                        ar,
+                        delta_lon,
+                    })
+                .where("cg = :cg", { cg: db_account.geocode.cg })
+                .returning('*')
+                .execute();
+
+
+
+            if (update_geocode) {
+                //send email
+                return {
+                    updated: true,
+                    account: await createQueryBuilder(Account, "account")
+                        .leftJoinAndSelect("account.geocode", "geocode")
+                        .leftJoinAndSelect("account.farm", "farm")
+                        .where("account.cg = :cg", { cg: publicId })
+                        .getOne()
+                };
+            } else {
+                return {
+                    errors: [
+                        {
+                            path: "UpdateFarmDeliveryGradient",
+                            message: `Else condition: publicId ${publicId}`
+                        }
+                    ]
+                }
+            }
+        } catch (err) {
+            console.log(err)
+            return {
+                errors: [
+                    {
+                        path: `, ${err.severity}`,
+                        message: `${err.code}, ${err.detail}`
+                    }
+                ],
+            };
+        }
+    },
 
     ForgotPassword: async (email: string): Promise<PublicResponse> => {
         const account = await await getConnection()
@@ -809,47 +1044,6 @@ const GraphCompose = {
             }
         }
     },
-
-    ListAdd: async (
-        data: ListAddInput,
-        farmCg: string
-    ): Promise<ListResponse | undefined> => {
-        try {
-
-            const vegetable = await Vegetable.findOne({ where: { cg: data.node } })
-            console.log(vegetable)
-
-            const list_add = await
-                getConnection()
-                    .createQueryBuilder()
-                    .insert()
-                    .into(List)
-                    .values(
-                        {
-                            from: farmCg,
-                            to: data.to,
-
-
-                        })
-                    .returning('*')
-                    .execute();
-
-
-            const list: List = list_add.raw[0];
-            return { list };
-        } catch (err) {
-            console.log(err)
-            return {
-                errors: [
-                    {
-                        path: `${err.severity}, ${err.code}`,
-                        message: `${err.detail}`
-                    }
-                ],
-            }
-        }
-
-    }
 }
 
 export default GraphCompose;
