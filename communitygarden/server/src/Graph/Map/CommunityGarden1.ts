@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import * as dotenv from "dotenv"
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import { DualCredential, SignUpPublicInput, SignUpFarmInput, UpdateAccountIdentityInput, UpdateAccountEmailInput, UpdateFarmIdentityInput, UpdateFarmDeliveryGradientInput } from "../Topology/Figures/InputTypes";
 import { PublicResponse, ErrorList, SignUpResponse, GraphResponse, LoginResponse } from "../Topology/Figures/ObjectTypes";
@@ -10,7 +11,8 @@ import { AccountType } from "../Topology/Figures/EnumTypes";
 import argon2 from "argon2";
 import { v4 } from "uuid";
 
-const PREFIX_FORGOT_PASSWORD = process.env.REDIS_FORGOT_PASSWORD_PREFIX as string;
+dotenv.config()
+const PREFIX_FORGOT_PASSWORD = process.env.REDIS_FORGOT_PASSWORD_PREFIX;
 
 @Resolver()
 export class CommunityGarden1 {
@@ -234,7 +236,6 @@ export class CommunityGarden1 {
         if (errors) {
             return { errors };
         }
-
 
         const key = PREFIX_FORGOT_PASSWORD + token;
 
