@@ -1,12 +1,18 @@
 import "reflect-metadata"
 import { ObjectType, Field, Float } from "type-graphql";
 import { Account } from "../Atlas/Account";
-import { Farm } from "../Atlas/Farm";
-import { Geocode } from "../Atlas/Geocode";
 import { List } from "../Atlas/List";
 import { Vegetable } from "../Atlas/Vegetable";
+import { AccountType } from "./EnumTypes";
 
+@ObjectType()
+export class DeliveryGradient {
+    @Field(() => Float)
+    radius: number;
 
+    @Field(() => Float)
+    cost: number;
+}
 
 @ObjectType()
 export class ErrorList {
@@ -15,6 +21,24 @@ export class ErrorList {
 
     @Field()
     message?: string;
+}
+
+@ObjectType()
+export class PublicResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
+
+    @Field(() => String, { nullable: true })
+    communitygarden?: string;
+}
+
+@ObjectType()
+export class AccountResponse {
+    @Field(() => [ErrorList], { nullable: true })
+    errors?: ErrorList[];
+
+    @Field(() => Account, { nullable: true })
+    account?: Account;
 }
 
 @ObjectType()
@@ -28,65 +52,29 @@ export class SignUpResponse {
     @Field(() => String, { nullable: true })
     account?: string;
 
-    @Field(() => String, { nullable: true })
-    farm?: string;
-
-    @Field(() => String, { nullable: true })
-    artisan?: string;
+    @Field(() => AccountType, { nullable: true })
+    account_type?: AccountType;
 }
 
 @ObjectType()
-export class GraphResponse {
+export class DeleteAccountResponse {
     @Field(() => [ErrorList], { nullable: true })
     errors?: ErrorList[];
-
-    @Field(() => Account, { nullable: true })
-    account?: Account;
-
-    @Field(() => Farm, { nullable: true })
-    farm?: Farm;
-
-    @Field(() => Vegetable, { nullable: true })
-    vegetable?: Vegetable;
-
-    @Field(() => Geocode, { nullable: true })
-    geocode?: Geocode;
-
-
-    @Field(() => Boolean, { nullable: true })
-    updated?: boolean;
 
     @Field(() => Boolean, { nullable: true })
     deleted?: boolean;
 }
 
 @ObjectType()
-export class PublicResponse {
+export class DeleteFarmResponse {
     @Field(() => [ErrorList], { nullable: true })
     errors?: ErrorList[];
 
     @Field(() => Account, { nullable: true })
     account?: Account;
-}
 
-@ObjectType()
-export class LoginResponse {
-    @Field(() => [ErrorList], { nullable: true })
-    errors?: ErrorList[];
-
-    @Field(() => Account, { nullable: true })
-    account?: Account;
-}
-
-
-
-@ObjectType()
-export class DeliveryGradient {
-    @Field(() => Float)
-    radius: number;
-
-    @Field(() => Float)
-    cost: number;
+    @Field(() => Boolean, { nullable: true })
+    deleted?: boolean;
 }
 
 @ObjectType()

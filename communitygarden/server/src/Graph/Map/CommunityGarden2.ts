@@ -1,126 +1,246 @@
-import { LocalFood } from "../../../src/CommunityGarden/core"
-import { Arg, Ctx, Mutation, Resolver } from "type-graphql"
-import GraphCompose from "../Functions/GraphCompose"
-import GraphValidate from "../Functions/GraphValidate"
-import { Account } from "../Topology/Atlas/Account"
-import { QuantityMapCreateInput, VegetableCreateInput } from "../Topology/Figures/InputTypes"
-import { ErrorList, VegetableResponse } from "../Topology/Figures/ObjectTypes"
+import { LocalFood } from "server/src/CommunityGarden/core";
+import { Arg, Ctx, Mutation, Resolver } from "type-graphql";
+import GraphShape2 from "../Functions/GraphShape2";
+import GraphValidate from "../Functions/GraphValidate";
+import { UpdateAccountIdentityInput, UpdateAccountEmailInput, UpdateAccountGeocodeInput, UpdateFarmIdentityInput, UpdateFarmDeliveryGradientInput } from "../Topology/Figures/InputTypes";
+import { AccountResponse, ErrorList } from "../Topology/Figures/ObjectTypes";
 
 @Resolver()
 export class CommunityGarden2 {
-    @Mutation(() => VegetableResponse)
-    async createVegetable(
-        @Arg("input") input: VegetableCreateInput,
+    @Mutation(() => AccountResponse)
+    async updateAccountIdentity(
+        @Arg("input") input: UpdateAccountIdentityInput,
         @Ctx() { req }: LocalFood
-    ): Promise<VegetableResponse> {
+    ): Promise<AccountResponse> {
         if (!req.session.publicId) {
             return {
                 errors: [
                     {
-                        path: "createVegetable",
-                        message: "No publicId on cookie"
+                        path: "updateAccountIdentity",
+                        message: "Community Garden Map 2: Error 1"
                     }
-                ]
-            }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountIdentity(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: AccountResponse = await GraphShape2.UpdateAccountIdentity(input, req.session.publicId);
+
+        if (resp.errors) {
+            return resp;
+        }
+
+        if (resp.account) {
+            console.log("Community Garden server... updateAccountIdentity, success...", resp.account.account_type, resp.account.username)
+            return resp;
+        }
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountIdentity",
+                        message: "Community Garden Map 2: Error 2"
+                    }
+                ],
+            };
+        }
+    };
+
+    @Mutation(() => AccountResponse)
+    async updateAccountEmail(
+        @Arg("input") input: UpdateAccountEmailInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<AccountResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountEmail",
+                        message: "Community Garden Map 2: Error 1"
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountEmail(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: AccountResponse = await GraphShape2.UpdateAccountEmail(input, req.session.publicId);
+
+        if (resp.errors) {
+            return resp;
+        }
+
+        if (resp.account) {
+            console.log("Community Garden server... updateAccountEmail, success...", resp.account.account_type, resp.account.username)
+            return resp;
+        }
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountEmail",
+                        message: "Community Garden Map 2: Error 2"
+                    }
+                ],
+            };
+        }
+    };
+
+    @Mutation(() => AccountResponse)
+    async updateAccountGeocode(
+        @Arg("input") input: UpdateAccountGeocodeInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<AccountResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountGeocode",
+                        message: "Community Garden Map 2: Error 1"
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateAccountGeocode(input);
+        if (errors) {
+            return { errors };
+        }
+
+        const resp: AccountResponse = await GraphShape2.UpdateAccountGeocode(input, req.session.publicId);
+
+        if (resp.errors) {
+            return resp;
+        }
+
+        if (resp.account) {
+            console.log("Community Garden server... updateAccountGeocode, success...", resp.account.account_type, resp.account.username)
+            return resp;
+        }
+        else {
+            return {
+                errors: [
+                    {
+                        path: "updateAccountGeocode",
+                        message: "Community Garden Map 2: Error 2"
+                    }
+                ],
+            };
+        }
+    }
+
+    @Mutation(() => AccountResponse)
+    async updateFarmIdentity(
+        @Arg("input") input: UpdateFarmIdentityInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<AccountResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateFarmIdentity",
+                        message: "Community Garden Map 2: Error 1"
+                    }
+                ],
+            };
         }
 
         if (!req.session.farmId) {
             return {
                 errors: [
                     {
-                        path: "createVegetable",
-                        message: "No farmId on cookie"
+                        path: "updateFarmIdentity",
+                        message: "Community Garden Map 2: Error 2"
                     }
-                ]
-            }
-        }
-
-        const acct = await Account.findOne({ where: { cg: req.session.publicId } })
-        console.log(acct)
-        if (acct === undefined) {
-            return {
-                errors: [
-                    {
-                        path: "createVegetable",
-                        message: "No Account with cg = publicId"
-                    }
-                ]
-            }
-        }
-
-
-        if (acct.farmId === null) {
-            return {
-                errors: [
-                    {
-                        path: "createVegetable",
-                        message: "No Farm on Account with cg = publicId"
-                    }
-                ]
+                ],
             };
         }
 
-        const errors: ErrorList[] | null = await GraphValidate.CreateVegetable(input)
+        const errors: ErrorList[] | null = await GraphValidate.UpdateFarmIdentity(input);
         if (errors) {
             return { errors };
         }
 
-        const resp: VegetableResponse = await GraphCompose.CreateVegetable(input, acct.farmId);
-        console.log("VegetableResponse, ", resp);
+        const resp: AccountResponse = await GraphShape2.UpdateFarmIdentity(input, req.session.publicId, req.session.farmId);
+
         if (resp.errors) {
-            return {
-                errors: resp.errors
-            };
+            return resp;
         }
 
-        else if (resp.vegetable) {
-            return {
-                vegetable: resp.vegetable
-            };
-        } else {
+        if (resp.account) {
+            console.log("Community Garden server... updateFarmIdentity, success...", resp.account.account_type, resp.account.username)
+            return resp;
+        }
+        else {
             return {
                 errors: [
                     {
-                        path: "createVegetable",
-                        message: "No vegetable on VegetableResponse"
+                        path: "updateFarmIdentity",
+                        message: "Community Garden Map 2: Error 3"
                     }
-                ]
+                ],
             };
-        };
-    }
+        }
+    };
 
-    @Mutation(() => VegetableResponse)
-    async createVegetableQuantityMap(
-        @Arg("input") input: QuantityMapCreateInput,
-        //@Ctx() { req }: LocalFood
-    ): Promise<VegetableResponse> {
-        const errors = await GraphValidate.CreateVegetableQuantityMap(input)
+    @Mutation(() => AccountResponse)
+    async updateFarmDeliveryGradient(
+        @Arg("input") input: UpdateFarmDeliveryGradientInput,
+        @Ctx() { req }: LocalFood
+    ): Promise<AccountResponse> {
+        if (!req.session.publicId) {
+            return {
+                errors: [
+                    {
+                        path: "updateFarmDeliveryGradient",
+                        message: "Community Garden Map 2: Error 1"
+                    }
+                ],
+            };
+        }
+
+        if (!req.session.farmId) {
+            return {
+                errors: [
+                    {
+                        path: "updateFarmDeliveryGradient",
+                        message: "Community Garden Map 2: Error 2"
+                    }
+                ],
+            };
+        }
+
+        const errors: ErrorList[] | null = await GraphValidate.UpdateFarmDeliveryGradient(input);
         if (errors) {
-            return { errors }
+            return { errors };
         }
 
-        const resp: VegetableResponse = await GraphCompose.CreateVegetableQuantityMap(input)
-        console.log("resp", resp)
-        /*if (resp.errors) {
-            return {
-                errors: resp.errors
-            }
-        }*/
+        const resp: AccountResponse = await GraphShape2.UpdateFarmDeliveryGradient(input, req.session.publicId, req.session.farmId);
 
-        if (!resp.vegetable) { //&& resp.quantity_map)) {
+        if (resp.errors) {
+            return resp;
+        }
+
+        if (resp.account) {
+            console.log("Community Garden server... updateFarmDeliveryGradient, success...", resp.account.account_type, resp.account.username)
+            return resp;
+        }
+        else {
             return {
                 errors: [
                     {
-                        path: "createVegetableQuantityMap",
-                        message: "Insufficient GraphCompose return"
+                        path: "updateFarmDeliveryGradient",
+                        message: "Community Garden Map 2: Error 3"
                     }
-                ]
+                ],
             };
-        }
-
-        return {
-            vegetable: resp.vegetable,
-            //quantity_map: resp.quantity_map
         }
     }
 }

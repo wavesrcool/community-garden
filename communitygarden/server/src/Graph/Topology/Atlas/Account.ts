@@ -35,7 +35,6 @@ export class Account extends BaseEntity {
 
     @Field(() => Geocode)
     @OneToOne(() => Geocode, geocode => geocode.account)
-    @JoinColumn()
     geocode: Geocode;
 
     @Field(() => AccountRole)

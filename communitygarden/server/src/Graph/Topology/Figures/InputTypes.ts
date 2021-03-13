@@ -119,6 +119,24 @@ export class DualCredential {
 }
 
 @InputType()
+export class UniquesCredential {
+    @Field()
+    username: string;
+
+    @Field()
+    email: string;
+}
+
+@InputType()
+export class ChangePasswordInput {
+    @Field()
+    token: string;
+
+    @Field()
+    new_password: string;
+}
+
+@InputType()
 export class UpdateAccountIdentityInput {
     @Field()
     first_name: string;

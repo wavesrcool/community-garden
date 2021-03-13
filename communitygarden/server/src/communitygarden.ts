@@ -16,6 +16,7 @@ import CommunityGarden from "./CommunityGarden/core";
 import { GraphQLFileLoader, loadSchema, mergeSchemasAsync } from "graphql-tools"
 import { join } from "path";
 import { CommunityGarden1 } from "./Graph/Map/CommunityGarden1";
+import { CommunityGarden2 } from "./Graph/Map/CommunityGarden2";
 
 
 
@@ -64,7 +65,7 @@ const communitygarden = async () => {
         );
 
         const local_food_graphql_schema = await buildSchema({
-            resolvers: [CommunityGarden1],
+            resolvers: [CommunityGarden1, CommunityGarden2],
             scalarsMap: [],
             validate: false,
         })

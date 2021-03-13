@@ -1,7 +1,7 @@
 import { Field, Int, ObjectType } from "type-graphql";
 import { BaseEntity, Column, CreateDateColumn, Entity, Generated, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { DeliveryGradient } from "../Figures/ObjectTypes";
 import { Account } from "./Account";
+import { Geodesic } from "./Geodesic";
 import { Vegetable } from "./Vegetable";
 
 
@@ -11,6 +11,19 @@ export class Farm extends BaseEntity {
     @Field()
     @PrimaryGeneratedColumn()
     id!: number;
+
+    @Field(() => Int, { nullable: true })
+    @Column({ nullable: true })
+    accountId: number;
+
+    @Field(() => Account)
+    @OneToOne(() => Account, account => account.farm, { onDelete: "CASCADE" })
+    @JoinColumn()
+    account: Account;
+
+    @Field(() => Geodesic)
+    @OneToOne(() => Geodesic, geodesic => geodesic.farm, { onDelete: "CASCADE" })
+    geodesic: Geodesic;
 
     @Field(() => String)
     @CreateDateColumn()
@@ -25,15 +38,6 @@ export class Farm extends BaseEntity {
     @Generated("uuid")
     cg: string;
 
-    @Field(() => Int, { nullable: true })
-    @Column({ nullable: true })
-    accountId: number;
-
-    @Field(() => Account)
-    @OneToOne(() => Account, account => account.farm, { onDelete: "CASCADE" })
-    @JoinColumn()
-    account: Account;
-
     @Field(() => [Vegetable], { nullable: true })
     @OneToMany(() => Vegetable, vegetable => vegetable.farm)
     vegetables: Vegetable[];
@@ -45,8 +49,4 @@ export class Farm extends BaseEntity {
     @Field()
     @Column()
     approves_pickup: boolean;
-
-    @Field(() => [DeliveryGradient])
-    @Column({ type: "jsonb" })
-    delivery_gradient: DeliveryGradient[];
 }

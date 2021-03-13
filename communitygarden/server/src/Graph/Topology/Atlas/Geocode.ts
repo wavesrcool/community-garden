@@ -10,6 +10,15 @@ export class Geocode {
     @PrimaryGeneratedColumn()
     id!: number;
 
+    @Field(() => Int, { nullable: true })
+    @Column({ nullable: true })
+    accountId: number;
+
+    @Field(() => Account)
+    @OneToOne(() => Account, account => account.geocode, { onDelete: "CASCADE" })
+    @JoinColumn()
+    account: Account;
+
     @Field(() => String)
     @CreateDateColumn()
     createdAt: Date;
@@ -22,15 +31,6 @@ export class Geocode {
     @Column()
     @Generated("uuid")
     cg: string;
-
-    @Field(() => Int, { nullable: true })
-    @Column({ nullable: true })
-    accountId: number;
-
-    @Field(() => Account)
-    @OneToOne(() => Account, account => account.geocode, { onDelete: "CASCADE" })
-    @JoinColumn()
-    account: Account;
 
     @Field(() => Float)
     @Column()
@@ -83,36 +83,4 @@ export class Geocode {
     @Field(() => String, { nullable: true })
     @Column({ nullable: true })
     place_id?: string;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lat_r: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lng_r: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lat_min: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lat_max: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lng_min: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    lng_max: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    ar: number;
-
-    @Field(() => Float)
-    @Column({ type: "float" })
-    delta_lon: number;
 }
